@@ -21,7 +21,7 @@ apps de origen desconocido" la primera vez. Después la app se actualiza sola.
 
 ### Código de Downloader
 - Creado en https://go.aftvnews.com apuntando al enlace "última versión".
-- CÓDIGO: _(pendiente de generar)_
+- CÓDIGO: **2307067**  (enlace corto: aftv.news/2307067)
 
 ## Publicar una versión nueva (desde la máquina de desarrollo)
 ```bash
