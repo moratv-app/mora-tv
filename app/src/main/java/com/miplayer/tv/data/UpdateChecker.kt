@@ -21,7 +21,7 @@ data class UpdateInfo(val versionName: String, val versionCode: Int, val apkUrl:
  */
 object UpdateChecker {
     // Se rellena al crear el repo:
-    const val OWNER = "9ness"
+    const val OWNER = "moratv"
     const val REPO = "mora-tv"
 
     private val client = OkHttpClient()
