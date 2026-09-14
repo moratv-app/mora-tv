@@ -42,7 +42,7 @@ fun DashboardScreen(state: UiState, vm: MainViewModel) {
     }
 
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    Box(Modifier.fillMaxSize().background(Bg)) {
+    Box(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
         val perRow = if (isCompact()) 2 else 3
         Column(Modifier.fillMaxSize().padding(horizontal = edgePadding().dp, vertical = 24.dp)) {
             ScreenHeader("Inicio", subtitle)

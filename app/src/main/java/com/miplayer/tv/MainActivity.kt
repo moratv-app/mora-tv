@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MiPlayerTheme {
+            MoraTheme {
                 val vm: MainViewModel = viewModel()
                 val state by vm.state.collectAsState()
                 val isTv = isTelevision(LocalContext.current)

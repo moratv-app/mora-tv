@@ -1,6 +1,8 @@
 package com.miplayer.tv.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,7 +29,7 @@ import com.miplayer.tv.data.Profile
 fun ProfilesScreen(state: UiState, vm: MainViewModel) {
     var adding by remember { mutableStateOf(state.profiles.isEmpty()) }
 
-    Box(Modifier.fillMaxSize().background(Bg)) {
+    Box(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
         if (adding) AddProfileForm(state, vm) { adding = false }
         else ProfileList(state, vm) { adding = true }
 
@@ -131,19 +133,20 @@ private fun AddProfileForm(state: UiState, vm: MainViewModel, onCancel: () -> Un
                 }
 
                 Spacer(Modifier.height(22.dp))
-                Button(
-                    onClick = {
-                        if (pasteMode) vm.addFromUrl(name, m3uUrl)
-                        else vm.addProfile(name, host, user, pass)
-                    },
-                    enabled = !state.loading &&
-                        (if (pasteMode) m3uUrl.isNotBlank() else host.isNotBlank() && user.isNotBlank()),
-                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(14.dp)
+                val canConnect = !state.loading &&
+                    (if (pasteMode) m3uUrl.isNotBlank() else host.isNotBlank() && user.isNotBlank())
+                Box(
+                    Modifier.fillMaxWidth().height(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (canConnect) NebulaGradient else androidx.compose.ui.graphics.SolidColor(Card))
+                        .clickable(enabled = canConnect) {
+                            if (pasteMode) vm.addFromUrl(name, m3uUrl)
+                            else vm.addProfile(name, host, user, pass)
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(if (state.loading) state.loadingMsg else "CONECTAR",
-                        fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        color = TextMain, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 }
                 if (state.profiles.isNotEmpty()) {
                     TextButton(onClick = onCancel) { Text("Volver a la lista", color = TextSub) }
