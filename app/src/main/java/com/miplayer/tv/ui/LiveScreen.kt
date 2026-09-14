@@ -48,6 +48,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
     var retries by remember { mutableIntStateOf(0) }
     // Momento en que empezó a bufferear (0 = va fluido)
     var bufferingSince by remember { mutableLongStateOf(0L) }
+    var autoReloads by remember { mutableIntStateOf(0) }
 
     val player = remember {
         val http = DefaultHttpDataSource.Factory()
@@ -74,7 +75,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
 
     LaunchedEffect(url) {
         if (url != null) {
-            retries = 0; bufferingSince = 0L
+            retries = 0; bufferingSince = 0L; autoReloads = 0
             player.setMediaItem(MediaItem.fromUri(url))
             player.prepare()
         }
@@ -92,7 +93,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
             override fun onPlayerError(e: PlaybackException) {
                 if (retries < 5) { retries++; player.prepare() }
             }
-            override fun onIsPlayingChanged(p: Boolean) { if (p) { retries = 0; bufferingSince = 0L } }
+            override fun onIsPlayingChanged(p: Boolean) { if (p) { retries = 0; bufferingSince = 0L; autoReloads = 0 } }
         }
         com.miplayer.tv.player.PlayerHolder.current = player
         player.addListener(l)
@@ -109,7 +110,10 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
         while (true) {
             delay(1000)
             val since = bufferingSince
-            if (since != 0L && System.currentTimeMillis() - since > 8_000) {
+            // Recarga sola solo si lleva >8 s atascado y sin superar 3 intentos,
+            // para no entrar en bucle con un canal simplemente lento.
+            if (since != 0L && System.currentTimeMillis() - since > 8_000 && autoReloads < 3) {
+                autoReloads++
                 reload()
             }
         }
