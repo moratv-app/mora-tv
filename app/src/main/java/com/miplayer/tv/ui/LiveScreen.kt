@@ -94,8 +94,14 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
             }
             override fun onIsPlayingChanged(p: Boolean) { if (p) { retries = 0; bufferingSince = 0L } }
         }
+        com.miplayer.tv.player.PlayerHolder.current = player
         player.addListener(l)
-        onDispose { player.removeListener(l); player.release() }
+        onDispose {
+            player.removeListener(l)
+            if (com.miplayer.tv.player.PlayerHolder.current === player)
+                com.miplayer.tv.player.PlayerHolder.current = null
+            player.release()
+        }
     }
 
     // Vigilante: si lleva más de 8 s atascado, recarga solo

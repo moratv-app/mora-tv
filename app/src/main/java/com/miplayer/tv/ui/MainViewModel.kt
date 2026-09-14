@@ -49,6 +49,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val catalogCache = CatalogCache(app)
     val settings = SettingsStore(app)
 
+    private var playOrigin: Screen = Screen.Dashboard
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state
 
@@ -198,7 +199,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             s.screen is Screen.Live && s.playerFullscreen -> s.copy(playerFullscreen = false)
             s.screen is Screen.Live -> s.copy(screen = Screen.Browse(Section.LIVE))
             s.screen is Screen.SeriesDetail -> s.copy(screen = Screen.Browse(Section.SERIES))
-            s.screen is Screen.Play -> s.copy(screen = Screen.Dashboard)
+            s.screen is Screen.Play -> s.copy(screen = playOrigin)
             s.screen is Screen.Browse || s.screen == Screen.Search || s.screen == Screen.Settings ->
                 s.copy(screen = Screen.Dashboard)
             s.screen == Screen.Dashboard -> s.copy(screen = Screen.Profiles)
@@ -279,6 +280,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun playEpisode(ep: EpisodeItem) {
         val p = _state.value.active ?: return
+        playOrigin = _state.value.screen as? Screen.SeriesDetail ?: Screen.Dashboard
         go(Screen.Play(
             StreamUrl.series(p, ep.id, ep.ext),
             ep.title ?: "Episodio", "episode:${ep.id}"
@@ -287,6 +289,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun playMovie(m: Stream) {
         val p = _state.value.active ?: return
+        playOrigin = Screen.Browse(Section.MOVIES)
         go(Screen.Play(
             StreamUrl.movie(p, m.streamId, m.ext),
             m.name ?: "Película", "movie:${m.streamId}"

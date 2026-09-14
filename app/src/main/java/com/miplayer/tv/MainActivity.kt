@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.miplayer.tv.player.PlayerHolder
 import com.miplayer.tv.player.PlayerScreen
 import com.miplayer.tv.ui.*
 
@@ -21,6 +22,7 @@ class MainActivity : ComponentActivity() {
     // Si hay algo reproduciéndose, para saber cuándo activar la ventana flotante
     private var playbackActive = false
     private val inPip = mutableStateOf(false)
+    private var enteredPip = false
 
     private fun pipSupported(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
@@ -50,7 +52,27 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         inPip.value = isInPictureInPictureMode
+        if (isInPictureInPictureMode) enteredPip = true
     }
+
+    override fun onStop() {
+        super.onStop()
+        // Si estábamos en ventana flotante y ya no lo estamos al parar,
+        // es que el usuario la cerró con la X: cortamos el sonido.
+        // (Con la pantalla bloqueada en reproducción normal, enteredPip es false y sigue sonando.)
+        if (enteredPip && !isInPipCompat()) {
+            PlayerHolder.stop()
+            enteredPip = false
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        enteredPip = false
+    }
+
+    private fun isInPipCompat(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,11 +96,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Atrás durante la reproducción: intenta flotar; si no puede, navega
-                BackHandler(enabled = state.screen != Screen.Profiles) {
-                    if (playing && enterPip()) return@BackHandler
-                    vm.back()
-                }
+                // Atrás SIEMPRE navega entre pantallas (gesto o mando).
+                // La ventana flotante salta solo al salir con Inicio (onUserLeaveHint).
+                BackHandler(enabled = state.screen != Screen.Profiles) { vm.back() }
 
                 when (val s = state.screen) {
                     Screen.Profiles -> if (state.loading) LoadingScreen(state.loadingMsg)

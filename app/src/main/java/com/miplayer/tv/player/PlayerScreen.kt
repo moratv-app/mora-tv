@@ -74,11 +74,13 @@ fun PlayerScreen(
     }
 
     DisposableEffect(Unit) {
+        PlayerHolder.current = player
         val window = (context as? ComponentActivity)?.window
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
             onPosition(player.currentPosition)
             window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            if (PlayerHolder.current === player) PlayerHolder.current = null
             player.release()
         }
     }
