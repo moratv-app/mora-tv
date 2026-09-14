@@ -71,7 +71,7 @@ fun SettingsScreen(state: UiState, vm: MainViewModel) {
                 color = TextSub, fontSize = 13.sp
             )
             Spacer(Modifier.height(12.dp))
-            Text("Mora TV versión 2.1", color = TextSub, fontSize = 12.sp)
+            Text("Mora TV versión 2.2", color = TextSub, fontSize = 12.sp)
         }
         ToastBar(state.toast) { vm.clearToast() }
     }

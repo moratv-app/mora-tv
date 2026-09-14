@@ -193,10 +193,25 @@ private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier) {
                         color = if (playing) Accent else TextMain,
                         fontWeight = if (playing) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 15.sp, maxLines = 1)
-                    if (!now?.title.isNullOrBlank())
+                    if (!now?.title.isNullOrBlank()) {
                         Text("Ahora: ${now!!.title}", color = TextSub, fontSize = 11.sp, maxLines = 1)
+                        val frac = progressOf(now.startMs, now.stopMs)
+                        if (frac != null) androidx.compose.material3.LinearProgressIndicator(
+                            progress = { frac },
+                            color = Accent, trackColor = Card,
+                            modifier = Modifier.fillMaxWidth().height(3.dp).padding(top = 3.dp)
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+/** Fracción 0..1 de lo transcurrido del programa actual, o null si no aplica. */
+fun progressOf(startMs: Long, stopMs: Long): Float? {
+    if (startMs <= 0 || stopMs <= startMs) return null
+    val now = System.currentTimeMillis()
+    if (now < startMs || now > stopMs) return null
+    return ((now - startMs).toFloat() / (stopMs - startMs)).coerceIn(0f, 1f)
 }
