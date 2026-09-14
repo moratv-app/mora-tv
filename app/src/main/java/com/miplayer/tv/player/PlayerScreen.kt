@@ -40,7 +40,7 @@ fun PlayerScreen(
 
     val player = remember(url) {
         val http = DefaultHttpDataSource.Factory()
-            .setUserAgent("MiPlayer")
+            .setUserAgent("Mora")
             .setAllowCrossProtocolRedirects(true)   // los servidores IPTV redirigen mucho
             .setConnectTimeoutMs(15_000)
             .setReadTimeoutMs(15_000)

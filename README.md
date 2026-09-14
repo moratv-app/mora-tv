@@ -1,4 +1,4 @@
-# MiPlayer TV
+# Mora TV
 
 Reproductor IPTV nativo para Android y Android TV. Login Xtream Codes o enlace M3U,
 lista de canales, películas, series, favoritos, búsqueda, vista previa con pantalla

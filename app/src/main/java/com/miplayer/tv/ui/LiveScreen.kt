@@ -44,7 +44,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
     // Un único reproductor para toda la pantalla
     val player = remember {
         val http = DefaultHttpDataSource.Factory()
-            .setUserAgent("MiPlayer")
+            .setUserAgent("Mora")
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15_000).setReadTimeoutMs(15_000)
         ExoPlayer.Builder(context)

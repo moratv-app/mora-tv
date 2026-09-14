@@ -55,7 +55,7 @@ fun FocusCard(
 @Composable
 fun ScreenHeader(title: String, subtitle: String? = null) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("MiPlayer", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Mora", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1)
