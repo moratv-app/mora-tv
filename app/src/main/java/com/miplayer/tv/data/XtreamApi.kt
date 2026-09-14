@@ -53,3 +53,5 @@ object Api {
 
     fun endpoint(host: String) = "${host.trimEnd('/')}/player_api.php"
 }
+
+// --- Series info (episodios) ---

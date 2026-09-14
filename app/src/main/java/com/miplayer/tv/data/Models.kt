@@ -81,5 +81,26 @@ data class MediaCard(
     val streamId: Int = 0,
     val seriesId: Int = 0,
     val ext: String? = null,
-    val categoryId: String? = null
+    val categoryId: String? = null,
+    val epgId: String? = null
+)
+
+/** Episodio de una serie (de get_series_info). */
+data class EpisodeItem(
+    val id: String = "",
+    @SerializedName("episode_num") val episodeNum: Int = 0,
+    val title: String? = null,
+    @SerializedName("container_extension") val ext: String? = null,
+    val season: Int = 0
+)
+
+/** Temporada con sus episodios ya agrupados. */
+data class SeasonGroup(val season: Int, val episodes: List<EpisodeItem>)
+
+/** Un programa de la guía EPG. */
+data class Programme(
+    val channelId: String,
+    val startMs: Long,
+    val stopMs: Long,
+    val title: String
 )

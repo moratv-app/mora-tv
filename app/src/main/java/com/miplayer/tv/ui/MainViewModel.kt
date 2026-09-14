@@ -18,6 +18,7 @@ sealed class Screen {
     data class Play(val url: String, val title: String, val itemKey: String) : Screen()
     /** Directo con vista previa + lista de canales (móvil vertical). */
     data object Live : Screen()
+    data class SeriesDetail(val seriesId: Int, val name: String) : Screen()
 }
 
 data class UiState(
@@ -35,13 +36,17 @@ data class UiState(
     val livePlaylist: List<Stream> = emptyList(),
     val liveIndex: Int = 0,
     val playerFullscreen: Boolean = false,
-    val update: UpdateInfo? = null
+    val update: UpdateInfo? = null,
+    val seriesSeasons: List<SeasonGroup> = emptyList(),
+    val seriesLoadingInfo: Boolean = false,
+    val epg: Map<String, List<Programme>> = emptyMap()
 )
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val profileStore = ProfileStore(app)
     private val userData = UserDataStore(app)
+    private val catalogCache = CatalogCache(app)
     val settings = SettingsStore(app)
 
     private val _state = MutableStateFlow(UiState())
@@ -125,21 +130,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openProfile(p: Profile) {
         profileStore.setActive(p.id)
-        _state.value = _state.value.copy(
-            active = p, loading = true, loadingMsg = "Cargando catálogo...",
-            error = null, favorites = userData.favorites(p.id)
-        )
-        viewModelScope.launch {
-            val cat = CatalogRepository.load(p)
-            if (cat.live.isEmpty() && cat.movies.isEmpty() && cat.series.isEmpty()) {
-                _state.value = _state.value.copy(
-                    loading = false,
-                    error = "No se recibió contenido. Revisa el servidor o las credenciales."
-                )
-            } else {
-                _state.value = _state.value.copy(
-                    catalog = cat, loading = false, screen = Screen.Dashboard
-                )
+        val cached = catalogCache.load(p.id)
+        if (cached != null && (cached.live.isNotEmpty() || cached.movies.isNotEmpty() || cached.series.isNotEmpty())) {
+            // Arranque instantáneo con la copia guardada; refresco en segundo plano
+            _state.value = _state.value.copy(
+                active = p, catalog = cached, loading = false,
+                screen = Screen.Dashboard, error = null, favorites = userData.favorites(p.id)
+            )
+            loadEpg()
+            viewModelScope.launch {
+                val fresh = CatalogRepository.load(p)
+                if (fresh.live.isNotEmpty() || fresh.movies.isNotEmpty() || fresh.series.isNotEmpty()) {
+                    catalogCache.save(p.id, fresh)
+                    _state.value = _state.value.copy(catalog = fresh)
+                }
+            }
+        } else {
+            _state.value = _state.value.copy(
+                active = p, loading = true, loadingMsg = "Cargando catálogo...",
+                error = null, favorites = userData.favorites(p.id)
+            )
+            viewModelScope.launch {
+                val cat = CatalogRepository.load(p)
+                if (cat.live.isEmpty() && cat.movies.isEmpty() && cat.series.isEmpty()) {
+                    _state.value = _state.value.copy(loading = false,
+                        error = "No se recibió contenido. Revisa el servidor o las credenciales.")
+                } else {
+                    catalogCache.save(p.id, cat)
+                    _state.value = _state.value.copy(catalog = cat, loading = false, screen = Screen.Dashboard)
+                    loadEpg()
+                }
             }
         }
     }
@@ -155,6 +175,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() = _state.value.active?.let { openProfile(it) }
 
+    fun loadEpg() {
+        val p = _state.value.active ?: return
+        viewModelScope.launch {
+            val e = EpgRepository.load(p)
+            if (e.isNotEmpty()) _state.value = _state.value.copy(epg = e)
+        }
+    }
+
+    fun nowPlaying(channelId: String?): Programme? = EpgRepository.now(_state.value.epg, channelId)
+    fun nextProgramme(channelId: String?): Programme? = EpgRepository.next(_state.value.epg, channelId)
+
     // ---------- Navegación ----------
 
     fun go(screen: Screen) {
@@ -166,6 +197,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = when {
             s.screen is Screen.Live && s.playerFullscreen -> s.copy(playerFullscreen = false)
             s.screen is Screen.Live -> s.copy(screen = Screen.Browse(Section.LIVE))
+            s.screen is Screen.SeriesDetail -> s.copy(screen = Screen.Browse(Section.SERIES))
             s.screen is Screen.Play -> s.copy(screen = Screen.Dashboard)
             s.screen is Screen.Browse || s.screen == Screen.Search || s.screen == Screen.Settings ->
                 s.copy(screen = Screen.Dashboard)
@@ -233,6 +265,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return StreamUrl.live(p, ch.streamId, settings.streamFormat)
     }
 
+    fun openSeries(item: SeriesItem) {
+        _state.value = _state.value.copy(
+            screen = Screen.SeriesDetail(item.seriesId, item.name ?: "Serie"),
+            seriesSeasons = emptyList(), seriesLoadingInfo = true
+        )
+        val p = _state.value.active ?: return
+        viewModelScope.launch {
+            val groups = CatalogRepository.seriesEpisodes(p, item.seriesId)
+            _state.value = _state.value.copy(seriesSeasons = groups, seriesLoadingInfo = false)
+        }
+    }
+
+    fun playEpisode(ep: EpisodeItem) {
+        val p = _state.value.active ?: return
+        go(Screen.Play(
+            StreamUrl.series(p, ep.id, ep.ext),
+            ep.title ?: "Episodio", "episode:${ep.id}"
+        ))
+    }
+
     fun playMovie(m: Stream) {
         val p = _state.value.active ?: return
         go(Screen.Play(
@@ -251,6 +303,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearLocalData() {
         userData.clearAll()
+        catalogCache.clear()
         _state.value = _state.value.copy(favorites = emptySet(), toast = "Datos locales borrados")
     }
 }

@@ -4,6 +4,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 
 /** Catálogo completo de un perfil. */
 data class Catalog(
@@ -60,5 +63,39 @@ object CatalogRepository {
         } catch (e: Exception) {
             "No se pudo conectar: ${e.message ?: "error de red"}"
         }
+    }
+
+    private val http = OkHttpClient()
+
+    /** Descarga los episodios de una serie y los agrupa por temporada. */
+    suspend fun seriesEpisodes(p: Profile, seriesId: Int): List<SeasonGroup> = withContext(Dispatchers.IO) {
+        try {
+            val url = "${Api.endpoint(p.host)}?username=${p.username}&password=${p.password}" +
+                      "&action=get_series_info&series_id=$seriesId"
+            val body = http.newCall(Request.Builder().url(url).build()).execute().use {
+                if (!it.isSuccessful) return@withContext emptyList<SeasonGroup>()
+                it.body?.string() ?: return@withContext emptyList<SeasonGroup>()
+            }
+            val root = JSONObject(body)
+            val eps = root.optJSONObject("episodes") ?: return@withContext emptyList()
+            val groups = mutableListOf<SeasonGroup>()
+            val keys = eps.keys().asSequence().toList().sortedBy { it.toIntOrNull() ?: 0 }
+            for (k in keys) {
+                val arr = eps.optJSONArray(k) ?: continue
+                val list = mutableListOf<EpisodeItem>()
+                for (i in 0 until arr.length()) {
+                    val e = arr.getJSONObject(i)
+                    list.add(EpisodeItem(
+                        id = e.optString("id"),
+                        episodeNum = e.optInt("episode_num"),
+                        title = e.optString("title").ifBlank { "Episodio ${e.optInt("episode_num")}" },
+                        ext = e.optString("container_extension").ifBlank { "mp4" },
+                        season = k.toIntOrNull() ?: 0
+                    ))
+                }
+                if (list.isNotEmpty()) groups.add(SeasonGroup(k.toIntOrNull() ?: 0, list))
+            }
+            groups
+        } catch (e: Exception) { emptyList() }
     }
 }

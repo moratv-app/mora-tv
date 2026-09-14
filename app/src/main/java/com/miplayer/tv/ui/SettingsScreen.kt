@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 fun SettingsScreen(state: UiState, vm: MainViewModel) {
     var format by remember { mutableStateOf(vm.settings.streamFormat) }
 
-    Box(Modifier.fillMaxSize().background(Bg)) {
+    Box(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
         Column(Modifier.fillMaxSize().padding(horizontal = edgePadding().dp, vertical = 24.dp)) {
             ScreenHeader("Ajustes", state.active?.name)
             Spacer(Modifier.height(28.dp))
@@ -71,7 +71,7 @@ fun SettingsScreen(state: UiState, vm: MainViewModel) {
                 color = TextSub, fontSize = 13.sp
             )
             Spacer(Modifier.height(12.dp))
-            Text("Mora TV versión 1.8", color = TextSub, fontSize = 12.sp)
+            Text("Mora TV versión 1.9", color = TextSub, fontSize = 12.sp)
         }
         ToastBar(state.toast) { vm.clearToast() }
     }

@@ -120,7 +120,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
                 VideoWithReload(player, Modifier.fillMaxSize(), isFullscreen = true,
                     onFullscreen = { vm.setFullscreen(false) }, onReload = { reload() })
 
-            compact -> Column(Modifier.fillMaxSize().background(Bg)) {
+            compact -> Column(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
                 VideoWithReload(
                     player,
                     Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black),
@@ -129,7 +129,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
                 ChannelList(state, vm, Modifier.weight(1f).fillMaxWidth())
             }
 
-            else -> Row(Modifier.fillMaxSize().background(Bg)) {
+            else -> Row(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
                 VideoWithReload(
                     player, Modifier.weight(1.6f).fillMaxHeight().background(Color.Black),
                     onFullscreen = { vm.setFullscreen(true) }, onReload = { reload() }
@@ -169,6 +169,7 @@ private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier) {
     LazyColumn(modifier.padding(horizontal = 12.dp)) {
         itemsIndexed(state.livePlaylist) { i, ch ->
             val playing = i == state.liveIndex
+            val now = vm.nowPlaying(ch.epgId)
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 3.dp)
                     .clip(RoundedCornerShape(10.dp))
@@ -181,10 +182,14 @@ private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier) {
                     fontSize = 12.sp, modifier = Modifier.width(34.dp))
                 AsyncImage(ch.icon, null, modifier = Modifier.size(34.dp))
                 Spacer(Modifier.width(12.dp))
-                Text(ch.name ?: "Canal ${ch.num}",
-                    color = if (playing) Accent else TextMain,
-                    fontWeight = if (playing) FontWeight.Bold else FontWeight.Normal,
-                    fontSize = 15.sp, maxLines = 1)
+                Column(Modifier.weight(1f)) {
+                    Text(ch.name ?: "Canal ${ch.num}",
+                        color = if (playing) Accent else TextMain,
+                        fontWeight = if (playing) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 15.sp, maxLines = 1)
+                    if (!now?.title.isNullOrBlank())
+                        Text("Ahora: ${now!!.title}", color = TextSub, fontSize = 11.sp, maxLines = 1)
+                }
             }
         }
     }

@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
                                         else DashboardScreen(state, vm)
                     is Screen.Browse -> BrowseScreen(state, vm, s.section)
                     Screen.Live -> LiveScreen(state, vm, inPip = pip)
+                    is Screen.SeriesDetail -> SeriesDetailScreen(state, vm, s.name)
                     Screen.Search -> SearchScreen(state, vm)
                     Screen.Settings -> SettingsScreen(state, vm)
                     is Screen.Play -> PlayerScreen(

@@ -47,7 +47,7 @@ fun SearchScreen(state: UiState, vm: MainViewModel) {
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Bg)) {
+    Box(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
         Column(Modifier.fillMaxSize().padding(horizontal = edgePadding().dp, vertical = 20.dp)) {
             ScreenHeader("Buscar", if (applied.length >= 2) "${results.size} resultados" else null)
             Spacer(Modifier.height(18.dp))
@@ -85,6 +85,8 @@ fun SearchScreen(state: UiState, vm: MainViewModel) {
                                         .firstOrNull { it.streamId == card.streamId }?.let { vm.playLive(it) }
                                     Section.MOVIES -> state.catalog.movies
                                         .firstOrNull { it.streamId == card.streamId }?.let { vm.playMovie(it) }
+                                    Section.SERIES -> state.catalog.series
+                                        .firstOrNull { it.seriesId == card.seriesId }?.let { vm.openSeries(it) }
                                     else -> Unit
                                 }
                             },

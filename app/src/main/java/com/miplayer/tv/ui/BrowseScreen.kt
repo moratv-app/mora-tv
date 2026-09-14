@@ -37,7 +37,7 @@ fun BrowseScreen(state: UiState, vm: MainViewModel, section: Section) {
     val compact = isCompact()
     val pad = edgePadding().dp
 
-    Box(Modifier.fillMaxSize().background(Bg)) {
+    Box(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
         Column(Modifier.fillMaxSize().padding(horizontal = pad, vertical = if (compact) 16.dp else 28.dp)) {
             ScreenHeader(section.title, "${items.size} elementos")
             Spacer(Modifier.height(14.dp))
@@ -94,8 +94,10 @@ fun BrowseScreen(state: UiState, vm: MainViewModel, section: Section) {
                     // Directo en LISTA: se ven más canales de un vistazo
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         listItems(items) { card ->
+                            val now = vm.nowPlaying(card.epgId)
                             ChannelRow(
                                 card = card,
+                                nowTitle = now?.title,
                                 isFav = card.favKey() in state.favorites,
                                 onClick = { openCard(vm, state, card) },
                                 onFav = { vm.toggleFavorite(card.favKey()) }
@@ -168,7 +170,9 @@ private fun openCard(vm: MainViewModel, state: UiState, card: MediaCard) {
             ?.let { vm.playLive(it) }
         Section.MOVIES -> state.catalog.movies.firstOrNull { it.streamId == card.streamId }
             ?.let { vm.playMovie(it) }
-        else -> Unit   // series: pendiente la pantalla de episodios
+        Section.SERIES -> state.catalog.series.firstOrNull { it.seriesId == card.seriesId }
+            ?.let { vm.openSeries(it) }
+        else -> Unit
     }
 }
 
@@ -191,7 +195,8 @@ private fun itemsFor(state: UiState, section: Section, categoryId: String?): Lis
     val c = state.catalog
     fun liveCards(list: List<Stream>) = list.map {
         MediaCard("live:${it.streamId}", it.name ?: "Canal ${it.num}", image = it.icon,
-            section = Section.LIVE, num = it.num, streamId = it.streamId, categoryId = it.categoryId)
+            section = Section.LIVE, num = it.num, streamId = it.streamId,
+            categoryId = it.categoryId, epgId = it.epgId)
     }
     fun movieCards(list: List<Stream>) = list.map {
         MediaCard("movie:${it.streamId}", it.name ?: "Película", image = it.icon,
@@ -217,7 +222,7 @@ private fun itemsFor(state: UiState, section: Section, categoryId: String?): Lis
 }
 
 @Composable
-fun ChannelRow(card: MediaCard, isFav: Boolean, onClick: () -> Unit, onFav: () -> Unit) {
+fun ChannelRow(card: MediaCard, nowTitle: String? = null, isFav: Boolean, onClick: () -> Unit, onFav: () -> Unit) {
     FocusCard(Modifier.fillMaxWidth(), onClick = onClick) { focused ->
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -234,13 +239,17 @@ fun ChannelRow(card: MediaCard, isFav: Boolean, onClick: () -> Unit, onFav: () -
                 modifier = Modifier.size(40.dp)
             )
             Spacer(Modifier.width(12.dp))
-            Text(
-                card.title,
-                color = if (focused) Accent else TextMain,
-                fontSize = 16.sp,
-                maxLines = 1,
-                modifier = Modifier.weight(1f)
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    card.title,
+                    color = if (focused) Accent else TextMain,
+                    fontSize = 16.sp,
+                    maxLines = 1
+                )
+                if (!nowTitle.isNullOrBlank()) {
+                    Text("Ahora: $nowTitle", color = TextSub, fontSize = 12.sp, maxLines = 1)
+                }
+            }
             if (isFav) {
                 Icon(Icons.Filled.Star, null, tint = Accent, modifier = Modifier.size(20.dp))
             }
