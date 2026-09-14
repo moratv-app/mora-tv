@@ -75,8 +75,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun applyUpdate(context: android.content.Context) {
         val u = _state.value.update ?: return
+        // Si falta el permiso de instalar apps, llevamos al usuario a activarlo
+        if (!UpdateChecker.canInstall(context)) {
+            _state.value = _state.value.copy(
+                toast = "Activa \"permitir instalar apps\" y vuelve a pulsar")
+            UpdateChecker.openInstallPermission(context)
+            return
+        }
+        _state.value = _state.value.copy(toast = "Descargando actualización...")
         viewModelScope.launch {
-            runCatching { UpdateChecker.downloadAndInstall(context, u.apkUrl) }
+            val file = UpdateChecker.download(context, u.apkUrl)
+            if (file == null) {
+                _state.value = _state.value.copy(toast = "No se pudo descargar la actualización")
+            } else {
+                UpdateChecker.install(context, file)
+            }
         }
     }
 
