@@ -69,7 +69,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun checkUpdate() {
         viewModelScope.launch {
             val u = UpdateChecker.check()
-            if (u != null) _state.value = _state.value.copy(update = u)
+            // Pone el aviso si hay versión nueva, y lo QUITA si ya tienes la última
+            _state.value = _state.value.copy(update = u)
         }
     }
 

@@ -121,6 +121,8 @@ fun LoadingScreen(message: String) {
 fun UpdateBanner(state: UiState, vm: MainViewModel, modifier: Modifier = Modifier) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val up = state.update ?: return
+    // Candado: no mostrar si no es realmente una versión superior a la instalada
+    if (up.versionCode <= com.miplayer.tv.BuildConfig.VERSION_CODE) return
     FocusCard(modifier.fillMaxWidth(), onClick = { vm.applyUpdate(ctx) }) { f ->
         Row(
             Modifier.fillMaxWidth().padding(16.dp),

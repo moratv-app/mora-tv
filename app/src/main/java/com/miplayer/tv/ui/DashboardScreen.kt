@@ -48,8 +48,8 @@ fun DashboardScreen(state: UiState, vm: MainViewModel) {
             ScreenHeader("Inicio", subtitle)
             Spacer(Modifier.height(14.dp))
 
-            // Aviso de actualización disponible
-            state.update?.let { up ->
+            // Aviso de actualización disponible (solo si es realmente más nueva)
+            state.update?.takeIf { it.versionCode > com.miplayer.tv.BuildConfig.VERSION_CODE }?.let { up ->
                 FocusCard(Modifier.fillMaxWidth(), onClick = { vm.applyUpdate(ctx) }) { f ->
                     androidx.compose.foundation.layout.Row(
                         Modifier.fillMaxWidth().padding(16.dp),

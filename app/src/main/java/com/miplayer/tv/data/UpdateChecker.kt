@@ -26,7 +26,8 @@ object UpdateChecker {
         try {
             val req = Request.Builder()
                 .url("https://api.github.com/repos/$OWNER/$REPO/releases/latest")
-                .header("Accept", "application/vnd.github+json").build()
+                .header("Accept", "application/vnd.github+json")
+                .header("Cache-Control", "no-cache").build()
             val body = client.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) return@withContext null
                 r.body?.string() ?: return@withContext null
@@ -63,7 +64,8 @@ object UpdateChecker {
     suspend fun download(context: Context, url: String): File? = withContext(Dispatchers.IO) {
         try {
             val file = File(context.cacheDir, "update.apk")
-            client.newCall(Request.Builder().url(url).build()).execute().use { r ->
+            val fresh = url + (if (url.contains("?")) "&" else "?") + "_=" + System.currentTimeMillis()
+            client.newCall(Request.Builder().url(fresh).header("Cache-Control", "no-cache").build()).execute().use { r ->
                 if (!r.isSuccessful) return@withContext null
                 r.body?.byteStream()?.use { input -> file.outputStream().use { input.copyTo(it) } }
                     ?: return@withContext null
