@@ -172,14 +172,16 @@ private fun VideoWithReload(
     Box(modifier) {
         VideoSurface(player, Modifier.fillMaxSize(),
             isFullscreen = isFullscreen, onFullscreenToggle = onFullscreen)
-        // Botón de recargar (resincroniza el audio de un toque)
-        Box(
-            Modifier.align(Alignment.TopEnd).padding(10.dp)
-                .clip(CircleShape).background(Color(0x88000000))
-                .clickable { onReload() }.padding(8.dp)
-        ) {
-            Icon(Icons.Filled.Refresh, "Recargar canal", tint = Color.White,
-                modifier = Modifier.size(22.dp))
+        // Botón de recargar: solo en vista previa, no a pantalla completa
+        if (!isFullscreen) {
+            Box(
+                Modifier.align(Alignment.TopEnd).padding(10.dp)
+                    .clip(CircleShape).background(Color(0x88000000))
+                    .clickable { onReload() }.padding(8.dp)
+            ) {
+                Icon(Icons.Filled.Refresh, "Recargar canal", tint = Color.White,
+                    modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
@@ -196,7 +198,7 @@ private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier, o
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (playing) Accent.copy(alpha = 0.20f) else Card)
                     .combinedClickable(
-                        onClick = { vm.selectLiveIndex(i) },
+                        onClick = { if (i == state.liveIndex) vm.setFullscreen(true) else vm.selectLiveIndex(i) },
                         onLongClick = { onLongPress(ch) }
                     )
                     .padding(10.dp),
@@ -245,15 +247,16 @@ private fun LiveCategories(state: UiState, vm: MainViewModel, modifier: Modifier
     if (all.isEmpty()) return
 
     @Composable
-    fun chip(id: String?, label: String) {
+    fun chip(id: String?, label: String, fill: Boolean) {
         val active = id == state.liveCatId
-        FocusCard(onClick = { vm.selectLiveCategory(id) }) { f ->
+        FocusCard(if (fill) Modifier.fillMaxWidth() else Modifier,
+            onClick = { vm.selectLiveCategory(id) }) { f ->
             Text(
                 label,
                 color = if (active || f) Accent else TextMain,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 14.sp, maxLines = 1,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
             )
         }
     }
@@ -262,12 +265,12 @@ private fun LiveCategories(state: UiState, vm: MainViewModel, modifier: Modifier
         androidx.compose.foundation.lazy.LazyRow(
             modifier.padding(vertical = 6.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) { items(all) { chip(it.first, it.second) } }
+        ) { items(all) { chip(it.first, it.second, fill = false) } }
     } else {
         LazyColumn(
             modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) { items(all) { chip(it.first, it.second) } }
+        ) { items(all) { chip(it.first, it.second, fill = true) } }
     }
 }
 
