@@ -20,6 +20,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -130,9 +138,25 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
             inPip ->
                 VideoSurface(player, Modifier.fillMaxSize(), showFullscreenButton = false)
 
-            fullscreen ->
-                VideoWithReload(player, Modifier.fillMaxSize(), isFullscreen = true,
-                    onFullscreen = { vm.setFullscreen(false) }, onReload = { reload() })
+            fullscreen -> {
+                val fr = remember { FocusRequester() }
+                LaunchedEffect(Unit) { runCatching { fr.requestFocus() } }
+                Box(
+                    Modifier.fillMaxSize()
+                        .focusRequester(fr).focusable()
+                        .onPreviewKeyEvent { e ->
+                            if (e.type == KeyEventType.KeyDown) when (e.key) {
+                                Key.DirectionDown -> { vm.liveNext(); true }
+                                Key.DirectionUp -> { vm.livePrev(); true }
+                                Key.DirectionLeft -> { vm.setFullscreen(false); true }
+                                else -> false
+                            } else false
+                        }
+                ) {
+                    VideoWithReload(player, Modifier.fillMaxSize(), isFullscreen = true,
+                        onFullscreen = { vm.setFullscreen(false) }, onReload = { reload() })
+                }
+            }
 
             compact -> Column(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
                 VideoWithReload(

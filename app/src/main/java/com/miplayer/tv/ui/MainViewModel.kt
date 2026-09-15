@@ -325,6 +325,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun liveNext() {
+        val n = _state.value.livePlaylist.size
+        if (n > 0) selectLiveIndex((_state.value.liveIndex + 1) % n)
+    }
+    fun livePrev() {
+        val n = _state.value.livePlaylist.size
+        if (n > 0) selectLiveIndex((_state.value.liveIndex - 1 + n) % n)
+    }
+
     fun setFullscreen(full: Boolean) {
         _state.value = _state.value.copy(playerFullscreen = full)
     }
