@@ -159,11 +159,11 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
             }
 
             compact -> Column(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
-                VideoWithReload(
-                    player,
-                    Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black),
-                    onFullscreen = { vm.setFullscreen(true) }, onReload = { reload() }
+                PreviewTile(
+                    player, Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                    onClick = { vm.setFullscreen(true) }, onReload = { reload() }
                 )
+                ChannelInfo(state, vm, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp))
                 LiveCategories(state, vm, Modifier.fillMaxWidth(), horizontal = true)
                 ChannelList(state, vm, Modifier.weight(1f).fillMaxWidth(), onLongPress = { listDialogCh = it })
             }
@@ -171,15 +171,66 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
             else -> Row(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
                 LiveCategories(state, vm, Modifier.weight(0.9f).fillMaxHeight(), horizontal = false)
                 ChannelList(state, vm, Modifier.weight(1f).fillMaxHeight(), onLongPress = { listDialogCh = it })
-                VideoWithReload(
-                    player, Modifier.weight(1.8f).fillMaxHeight().background(Color.Black),
-                    onFullscreen = { vm.setFullscreen(true) }, onReload = { reload() }
-                )
+                Column(Modifier.weight(1.8f).fillMaxHeight().padding(10.dp)) {
+                    PreviewTile(
+                        player, Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                        onClick = { vm.setFullscreen(true) }, onReload = { reload() }
+                    )
+                    ChannelInfo(state, vm, Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp))
+                }
             }
         }
 
         listDialogCh?.let { ch ->
             AddToListDialog(state, vm, ch) { listDialogCh = null }
+        }
+    }
+}
+
+/** Vista previa del vídeo como una sola casilla: al pulsar OK va a pantalla completa. */
+@Composable
+private fun PreviewTile(player: ExoPlayer, modifier: Modifier, onClick: () -> Unit, onReload: () -> Unit) {
+    FocusCard(modifier, onClick = onClick) { _ ->
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            VideoSurface(player, Modifier.fillMaxSize(), showControls = false, showFullscreenButton = false)
+            Box(
+                Modifier.align(Alignment.TopEnd).padding(8.dp)
+                    .clip(CircleShape).background(Color(0x88000000))
+                    .clickable { onReload() }.padding(7.dp)
+            ) {
+                Icon(Icons.Filled.Refresh, "Recargar", tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+/** Información del canal en directo bajo la vista previa (aprovecha el hueco). */
+@Composable
+private fun ChannelInfo(state: UiState, vm: MainViewModel, modifier: Modifier) {
+    val ch = state.livePlaylist.getOrNull(state.liveIndex) ?: return
+    val now = vm.nowPlaying(ch.epgId)
+    val next = vm.nextProgramme(ch.epgId)
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("● EN DIRECTO", color = Color(0xFFFF5252), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(10.dp))
+            Text(ch.name ?: "Canal ${ch.num}", color = TextMain, fontSize = 18.sp,
+                fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+        Spacer(Modifier.height(10.dp))
+        if (now != null) {
+            Text(now.title, color = TextMain, fontSize = 15.sp, maxLines = 2)
+            val frac = progressOf(now.startMs, now.stopMs)
+            if (frac != null) androidx.compose.material3.LinearProgressIndicator(
+                progress = { frac }, color = Accent, trackColor = Card,
+                modifier = Modifier.fillMaxWidth().height(4.dp).padding(top = 6.dp)
+            )
+            if (next != null) {
+                Spacer(Modifier.height(10.dp))
+                Text("Después: ${next.title}", color = TextSub, fontSize = 13.sp, maxLines = 1)
+            }
+        } else {
+            Text("Sin información de guía (EPG)", color = TextSub, fontSize = 13.sp)
         }
     }
 }

@@ -12,8 +12,8 @@ android {
         applicationId = "com.miplayer.tv"
         minSdk = 21
         targetSdk = 34
-        versionCode = 28
-        versionName = "3.5.2"
+        versionCode = 29
+        versionName = "3.6"
     }
     buildTypes {
         release { isMinifyEnabled = false }

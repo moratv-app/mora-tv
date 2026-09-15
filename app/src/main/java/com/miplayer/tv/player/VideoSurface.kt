@@ -19,6 +19,7 @@ import androidx.media3.ui.PlayerView
 fun VideoSurface(
     player: ExoPlayer,
     modifier: Modifier = Modifier,
+    showControls: Boolean = true,
     showFullscreenButton: Boolean = true,
     isFullscreen: Boolean = false,
     onFullscreenToggle: () -> Unit = {}
@@ -28,19 +29,20 @@ fun VideoSurface(
         factory = { ctx ->
             PlayerView(ctx).apply {
                 this.player = player
-                useController = true
+                useController = showControls
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                if (showFullscreenButton)
+                if (showControls && showFullscreenButton)
                     setFullscreenButtonClickListener { onFullscreenToggle() }
                 else
                     setFullscreenButtonClickListener(null)
             }
         },
         update = { view ->
-            if (showFullscreenButton)
+            view.useController = showControls
+            if (showControls && showFullscreenButton)
                 view.setFullscreenButtonClickListener { onFullscreenToggle() }
             else
                 view.setFullscreenButtonClickListener(null)
