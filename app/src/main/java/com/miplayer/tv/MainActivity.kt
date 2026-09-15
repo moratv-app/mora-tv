@@ -86,6 +86,8 @@ class MainActivity : ComponentActivity() {
             MoraTheme {
                 val vm: MainViewModel = viewModel()
                 val state by vm.state.collectAsState()
+                var showSplash by remember { mutableStateOf(true) }
+                LaunchedEffect(Unit) { kotlinx.coroutines.delay(1300); showSplash = false }
                 val isTv = isTelevision(LocalContext.current)
                 val pip by inPip
 
@@ -106,6 +108,7 @@ class MainActivity : ComponentActivity() {
                 // La ventana flotante salta solo al salir con Inicio (onUserLeaveHint).
                 BackHandler(enabled = state.screen != Screen.Profiles) { vm.back() }
 
+                if (showSplash) SplashContent() else
                 when (val s = state.screen) {
                     Screen.Profiles -> if (state.loading) LoadingScreen(state.loadingMsg)
                                        else ProfilesScreen(state, vm)
