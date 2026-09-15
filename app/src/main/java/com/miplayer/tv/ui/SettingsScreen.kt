@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SettingsScreen(state: UiState, vm: MainViewModel) {
     var format by remember { mutableStateOf(vm.settings.streamFormat) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     Box(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
         Column(Modifier.fillMaxSize().padding(horizontal = edgePadding().dp, vertical = 24.dp)) {
@@ -61,6 +62,18 @@ fun SettingsScreen(state: UiState, vm: MainViewModel) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("Cambiar de perfil", color = if (f) Accent else TextMain, fontSize = 15.sp)
                     }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            FocusCard(Modifier.fillMaxWidth().height(56.dp), onClick = {
+                // Cierra la app por completo (útil tras actualizar, para que arranque la versión nueva)
+                (ctx as? android.app.Activity)?.finishAndRemoveTask()
+                kotlin.system.exitProcess(0)
+            }) { f ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Salir de Mora TV", color = if (f) Accent else TextMain,
+                        fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
