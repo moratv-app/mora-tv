@@ -1,6 +1,8 @@
 package com.miplayer.tv.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
@@ -98,10 +100,13 @@ private fun AddProfileForm(state: UiState, vm: MainViewModel, onCancel: () -> Un
     var pass by remember { mutableStateOf("") }
     var m3uUrl by remember { mutableStateOf("") }
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Surface(color = Card, shape = RoundedCornerShape(22.dp),
-            modifier = Modifier.widthIn(max = 520.dp).padding(24.dp)) {
-            Column(Modifier.padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            modifier = Modifier.widthIn(max = 520.dp).padding(horizontal = 24.dp)) {
+            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Conectar servidor", color = TextMain, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Text(if (pasteMode) "Pega tu enlace M3U y detecto todo solo"
                      else "Introduce los datos que te dio tu proveedor",
