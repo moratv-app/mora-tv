@@ -9,6 +9,7 @@ import android.content.Context
  */
 class UserDataStore(context: Context) {
     private val prefs = context.getSharedPreferences("userdata", Context.MODE_PRIVATE)
+    private val gson = com.google.gson.Gson()
 
     private fun favKey(profileId: String) = "fav_$profileId"
 
@@ -37,6 +38,38 @@ class UserDataStore(context: Context) {
         prefs.edit().putInt("last_$profileId", streamId).apply()
 
     fun lastChannel(profileId: String): Int = prefs.getInt("last_$profileId", 0)
+
+    // ---------- Listas personalizadas (ej. "Futbol") ----------
+    private fun listsKey(profileId: String) = "lists_$profileId"
+
+    fun customLists(profileId: String): Map<String, Set<String>> {
+        val json = prefs.getString(listsKey(profileId), null) ?: return linkedMapOf()
+        return try {
+            val type = object : com.google.gson.reflect.TypeToken<LinkedHashMap<String, MutableSet<String>>>() {}.type
+            gson.fromJson(json, type) ?: linkedMapOf()
+        } catch (e: Exception) { linkedMapOf() }
+    }
+
+    private fun saveLists(profileId: String, map: Map<String, Set<String>>) =
+        prefs.edit().putString(listsKey(profileId), gson.toJson(map)).apply()
+
+    fun createList(profileId: String, name: String) {
+        val m = LinkedHashMap(customLists(profileId))
+        if (!m.containsKey(name)) { m[name] = emptySet(); saveLists(profileId, m) }
+    }
+
+    fun deleteList(profileId: String, name: String) {
+        val m = LinkedHashMap(customLists(profileId)); m.remove(name); saveLists(profileId, m)
+    }
+
+    /** Añade/quita un canal de una lista; crea la lista si no existe. Devuelve si quedó dentro. */
+    fun toggleInList(profileId: String, name: String, channelKey: String): Boolean {
+        val m = LinkedHashMap<String, MutableSet<String>>()
+        customLists(profileId).forEach { (k, v) -> m[k] = v.toMutableSet() }
+        val set = m.getOrPut(name) { mutableSetOf() }
+        val inside = if (channelKey in set) { set.remove(channelKey); false } else { set.add(channelKey); true }
+        saveLists(profileId, m); return inside
+    }
 
     fun clearAll() = prefs.edit().clear().apply()
 }

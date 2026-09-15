@@ -37,6 +37,7 @@ data class UiState(
     val liveIndex: Int = 0,
     val playerFullscreen: Boolean = false,
     val liveCatId: String? = null,
+    val customLists: Map<String, Set<String>> = emptyMap(),
     val update: UpdateInfo? = null,
     val seriesSeasons: List<SeasonGroup> = emptyList(),
     val seriesLoadingInfo: Boolean = false,
@@ -61,6 +62,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             profiles = profiles,
             active = active,
             favorites = active?.let { userData.favorites(it.id) } ?: emptySet(),
+            customLists = active?.let { userData.customLists(it.id) } ?: emptyMap(),
             screen = Screen.Profiles
         )
         if (active != null) openProfile(active)
@@ -151,7 +153,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // Arranque instantáneo con la copia guardada; refresco en segundo plano
             _state.value = _state.value.copy(
                 active = p, catalog = cached, loading = false,
-                screen = Screen.Dashboard, error = null, favorites = userData.favorites(p.id)
+                screen = Screen.Dashboard, error = null, favorites = userData.favorites(p.id),
+                customLists = userData.customLists(p.id)
             )
             loadEpg()
             viewModelScope.launch {
@@ -164,7 +167,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } else {
             _state.value = _state.value.copy(
                 active = p, loading = true, loadingMsg = "Cargando catálogo...",
-                error = null, favorites = userData.favorites(p.id)
+                error = null, favorites = userData.favorites(p.id),
+                customLists = userData.customLists(p.id)
             )
             viewModelScope.launch {
                 val cat = CatalogRepository.load(p)
@@ -232,6 +236,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- Favoritos ----------
 
+    fun createList(name: String) {
+        val p = _state.value.active ?: return
+        userData.createList(p.id, name.trim())
+        _state.value = _state.value.copy(customLists = userData.customLists(p.id))
+    }
+
+    fun deleteList(name: String) {
+        val p = _state.value.active ?: return
+        userData.deleteList(p.id, name)
+        _state.value = _state.value.copy(customLists = userData.customLists(p.id))
+    }
+
+    fun toggleChannelInList(name: String, channelKey: String): Boolean {
+        val p = _state.value.active ?: return false
+        val inside = userData.toggleInList(p.id, name.trim(), channelKey)
+        _state.value = _state.value.copy(customLists = userData.customLists(p.id))
+        return inside
+    }
+
     fun toggleFavorite(key: String) {
         val p = _state.value.active ?: return
         val added = userData.toggleFavorite(p.id, key)
@@ -262,7 +285,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Canales de una categoría (null = todos). */
     fun channelsInCategory(catId: String?): List<Stream> {
         val all = _state.value.catalog.live
-        return if (catId == null) all else all.filter { it.categoryId == catId }
+        return when {
+            catId == null -> all
+            catId.startsWith("mylist:") -> {
+                val keys = _state.value.customLists[catId.removePrefix("mylist:")] ?: emptySet()
+                all.filter { "live:${it.streamId}" in keys }
+            }
+            else -> all.filter { it.categoryId == catId }
+        }
     }
 
     /** Entra en Directo y reproduce ya el primer canal de la primera categoría con contenido. */

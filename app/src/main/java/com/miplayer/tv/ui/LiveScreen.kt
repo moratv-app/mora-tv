@@ -2,7 +2,9 @@ package com.miplayer.tv.ui
 
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -121,6 +123,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
     }
 
     val compact = isCompact()
+    var listDialogCh by remember { mutableStateOf<com.miplayer.tv.data.Stream?>(null) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
@@ -138,17 +141,21 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
                     onFullscreen = { vm.setFullscreen(true) }, onReload = { reload() }
                 )
                 LiveCategories(state, vm, Modifier.fillMaxWidth(), horizontal = true)
-                ChannelList(state, vm, Modifier.weight(1f).fillMaxWidth())
+                ChannelList(state, vm, Modifier.weight(1f).fillMaxWidth(), onLongPress = { listDialogCh = it })
             }
 
             else -> Row(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
                 LiveCategories(state, vm, Modifier.weight(0.9f).fillMaxHeight(), horizontal = false)
-                ChannelList(state, vm, Modifier.weight(1f).fillMaxHeight())
+                ChannelList(state, vm, Modifier.weight(1f).fillMaxHeight(), onLongPress = { listDialogCh = it })
                 VideoWithReload(
                     player, Modifier.weight(1.8f).fillMaxHeight().background(Color.Black),
                     onFullscreen = { vm.setFullscreen(true) }, onReload = { reload() }
                 )
             }
+        }
+
+        listDialogCh?.let { ch ->
+            AddToListDialog(state, vm, ch) { listDialogCh = null }
         }
     }
 }
@@ -177,8 +184,9 @@ private fun VideoWithReload(
     }
 }
 
+@kotlin.OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier) {
+private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier, onLongPress: (com.miplayer.tv.data.Stream) -> Unit = {}) {
     LazyColumn(modifier.padding(horizontal = 12.dp)) {
         itemsIndexed(state.livePlaylist) { i, ch ->
             val playing = i == state.liveIndex
@@ -187,7 +195,10 @@ private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier) {
                 Modifier.fillMaxWidth().padding(vertical = 3.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (playing) Accent.copy(alpha = 0.20f) else Card)
-                    .clickable { vm.selectLiveIndex(i) }
+                    .combinedClickable(
+                        onClick = { vm.selectLiveIndex(i) },
+                        onLongClick = { onLongPress(ch) }
+                    )
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -226,17 +237,19 @@ fun progressOf(startMs: Long, stopMs: Long): Float? {
 /** Categorías de directo. Al elegir una, se reproduce automáticamente su primer canal. */
 @Composable
 private fun LiveCategories(state: UiState, vm: MainViewModel, modifier: Modifier, horizontal: Boolean) {
-    val cats = state.catalog.liveCategories.filter { c ->
-        state.catalog.live.any { it.categoryId == c.categoryId }
-    }
-    if (cats.isEmpty()) return
+    val real: List<Pair<String?, String>> = state.catalog.liveCategories
+        .filter { c -> state.catalog.live.any { it.categoryId == c.categoryId } }
+        .map { it.categoryId to (it.categoryName ?: "Sin nombre") }
+    val custom: List<Pair<String?, String>> = state.customLists.keys.map { "mylist:$it" to "★ $it" }
+    val all = custom + real
+    if (all.isEmpty()) return
 
     @Composable
-    fun chip(cat: com.miplayer.tv.data.Category) {
-        val active = cat.categoryId == state.liveCatId
-        FocusCard(onClick = { vm.selectLiveCategory(cat.categoryId) }) { f ->
+    fun chip(id: String?, label: String) {
+        val active = id == state.liveCatId
+        FocusCard(onClick = { vm.selectLiveCategory(id) }) { f ->
             Text(
-                cat.categoryName ?: "Sin nombre",
+                label,
                 color = if (active || f) Accent else TextMain,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                 fontSize = 14.sp, maxLines = 1,
@@ -249,11 +262,55 @@ private fun LiveCategories(state: UiState, vm: MainViewModel, modifier: Modifier
         androidx.compose.foundation.lazy.LazyRow(
             modifier.padding(vertical = 6.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) { items(cats) { chip(it) } }
+        ) { items(all) { chip(it.first, it.second) } }
     } else {
         LazyColumn(
             modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) { items(cats) { chip(it) } }
+        ) { items(all) { chip(it.first, it.second) } }
     }
+}
+
+/** Diálogo para añadir/quitar un canal de tus listas, o crear una nueva. */
+@Composable
+private fun AddToListDialog(state: UiState, vm: MainViewModel, ch: com.miplayer.tv.data.Stream, onClose: () -> Unit) {
+    val key = "live:${ch.streamId}"
+    var newName by remember { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose,
+        confirmButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text("Cerrar", color = Accent) } },
+        title = { Text("Añadir a lista: ${ch.name ?: "Canal"}", color = TextMain, fontSize = 18.sp) },
+        containerColor = Card,
+        text = {
+            Column {
+                state.customLists.forEach { (name, keys) ->
+                    val inside = key in keys
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                            .clickable { vm.toggleChannelInList(name, key) }
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(if (inside) "☑" else "☐", color = Accent, fontSize = 18.sp)
+                        Spacer(Modifier.width(10.dp))
+                        Text(name, color = TextMain, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = newName, onValueChange = { newName = it }, singleLine = true,
+                    label = { Text("Nueva lista (ej. Futbol)") }, modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.TextButton(
+                    enabled = newName.isNotBlank(),
+                    onClick = {
+                        vm.createList(newName)
+                        vm.toggleChannelInList(newName, key)   // mete el canal en la nueva lista
+                        newName = ""
+                    }
+                ) { Text("Crear lista y añadir", color = if (newName.isNotBlank()) Accent else TextSub) }
+            }
+        }
+    )
 }
