@@ -65,7 +65,8 @@ object CatalogRepository {
         }
     }
 
-    private val http = OkHttpClient()
+    private val http = OkHttpClient.Builder()
+        .followSslRedirects(false).retryOnConnectionFailure(true).build()
 
     /** Descarga los episodios de una serie y los agrupa por temporada. */
     suspend fun seriesEpisodes(p: Profile, seriesId: Int): List<SeasonGroup> = withContext(Dispatchers.IO) {
@@ -97,5 +98,27 @@ object CatalogRepository {
             }
             groups
         } catch (e: Exception) { emptyList() }
+    }
+
+    private fun swapScheme(host: String): String =
+        if (host.startsWith("https://")) "http://" + host.removePrefix("https://")
+        else "https://" + host.removePrefix("http://")
+
+    /**
+     * Valida el perfil probando el host tal cual y, si el fallo parece de cifrado
+     * (TLS/SSL) o de tráfico, reintenta con el esquema contrario (http<->https).
+     * Devuelve el perfil que funciona y un error (null si conectó).
+     */
+    suspend fun resolveHost(p: Profile): Pair<Profile, String?> {
+        val e1 = validate(p)
+        if (e1 == null) return p to null
+        val looksTls = listOf("TLS", "SSL", "handshake", "CLEARTEXT", "trust anchor", "cert")
+            .any { e1.contains(it, ignoreCase = true) }
+        if (looksTls) {
+            val alt = p.copy(host = swapScheme(p.host))
+            val e2 = validate(alt)
+            if (e2 == null) return alt to null
+        }
+        return p to e1
     }
 }

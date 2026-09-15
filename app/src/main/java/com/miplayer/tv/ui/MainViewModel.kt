@@ -108,13 +108,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
         _state.value = _state.value.copy(loading = true, loadingMsg = "Comprobando cuenta...", error = null)
         viewModelScope.launch {
-            val err = CatalogRepository.validate(p)
+            val (working, err) = CatalogRepository.resolveHost(p)
             if (err != null) {
                 _state.value = _state.value.copy(loading = false, error = err)
             } else {
-                profileStore.add(p)
+                profileStore.add(working)
                 _state.value = _state.value.copy(profiles = profileStore.all())
-                openProfile(p)
+                openProfile(working)
             }
         }
     }
