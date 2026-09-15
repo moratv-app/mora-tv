@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -111,6 +112,27 @@ fun LoadingScreen(message: String) {
             androidx.compose.material3.CircularProgressIndicator(color = Accent)
             Spacer(Modifier.height(20.dp))
             Text(message, color = TextSub, fontSize = 16.sp)
+        }
+    }
+}
+
+/** Aviso de actualización reutilizable (inicio y pantalla de conexión). */
+@androidx.compose.runtime.Composable
+fun UpdateBanner(state: UiState, vm: MainViewModel, modifier: Modifier = Modifier) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val up = state.update ?: return
+    FocusCard(modifier.fillMaxWidth(), onClick = { vm.applyUpdate(ctx) }) { f ->
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("⬇", color = Accent, fontSize = 22.sp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Actualización disponible (${up.versionName})",
+                    color = if (f) Accent else TextMain, fontWeight = FontWeight.Bold)
+                Text("Pulsa para descargar e instalar", color = TextSub, fontSize = 13.sp)
+            }
         }
     }
 }

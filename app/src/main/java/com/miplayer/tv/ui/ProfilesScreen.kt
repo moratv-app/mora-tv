@@ -41,7 +41,11 @@ fun ProfilesScreen(state: UiState, vm: MainViewModel) {
 private fun ProfileList(state: UiState, vm: MainViewModel, onAdd: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = edgePadding().dp, vertical = 24.dp)) {
         ScreenHeader("Elige un perfil")
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+        if (state.update != null) {
+            UpdateBanner(state, vm)
+            Spacer(Modifier.height(16.dp))
+        }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(state.profiles) { p ->
@@ -97,6 +101,10 @@ private fun AddProfileForm(state: UiState, vm: MainViewModel, onCancel: () -> Un
                 Text(if (pasteMode) "Pega tu enlace M3U y detecto todo solo"
                      else "Introduce los datos que te dio tu proveedor",
                     color = TextSub, fontSize = 14.sp)
+                if (state.update != null) {
+                    Spacer(Modifier.height(14.dp))
+                    UpdateBanner(state, vm)
+                }
                 Spacer(Modifier.height(18.dp))
 
                 // Selector de modo
