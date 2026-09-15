@@ -10,6 +10,7 @@ import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -75,7 +76,12 @@ class MainActivity : ComponentActivity() {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Mantener el logo un instante para que se vea al arrancar
+        var keep = true
+        splash.setKeepOnScreenCondition { keep }
+        window.decorView.postDelayed({ keep = false }, 900)
         setContent {
             MoraTheme {
                 val vm: MainViewModel = viewModel()

@@ -1,7 +1,14 @@
 <resources>
     <style name="Theme.MiPlayer" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#0F121C</item>
-        <item name="android:statusBarColor">#0F121C</item>
-        <item name="android:navigationBarColor">#0F121C</item>
+        <item name="android:windowBackground">@color/mora_bg</item>
+        <item name="android:statusBarColor">@color/mora_bg</item>
+        <item name="android:navigationBarColor">@color/mora_bg</item>
+    </style>
+
+    <!-- Pantalla de inicio con el logo -->
+    <style name="Theme.Mora.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/mora_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.MiPlayer</item>
     </style>
 </resources>
