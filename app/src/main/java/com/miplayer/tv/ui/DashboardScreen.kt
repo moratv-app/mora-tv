@@ -90,6 +90,7 @@ fun DashboardScreen(state: UiState, vm: MainViewModel) {
 private fun open(vm: MainViewModel, s: Section) = when (s) {
     Section.SEARCH -> vm.go(Screen.Search)
     Section.SETTINGS -> vm.go(Screen.Settings)
+    Section.LIVE -> vm.openLive()          // entra y reproduce ya
     else -> vm.go(Screen.Browse(s))
 }
 

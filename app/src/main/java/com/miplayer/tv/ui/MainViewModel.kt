@@ -36,6 +36,7 @@ data class UiState(
     val livePlaylist: List<Stream> = emptyList(),
     val liveIndex: Int = 0,
     val playerFullscreen: Boolean = false,
+    val liveCatId: String? = null,
     val update: UpdateInfo? = null,
     val seriesSeasons: List<SeasonGroup> = emptyList(),
     val seriesLoadingInfo: Boolean = false,
@@ -211,7 +212,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val s = _state.value
         _state.value = when {
             s.screen is Screen.Live && s.playerFullscreen -> s.copy(playerFullscreen = false)
-            s.screen is Screen.Live -> s.copy(screen = Screen.Browse(Section.LIVE))
+            s.screen is Screen.Live -> s.copy(screen = Screen.Dashboard)
             s.screen is Screen.SeriesDetail -> s.copy(screen = Screen.Browse(Section.SERIES))
             s.screen is Screen.Play -> s.copy(screen = playOrigin)
             s.screen is Screen.Browse || s.screen == Screen.Search || s.screen == Screen.Settings ->
@@ -256,6 +257,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             screen = Screen.Live, livePlaylist = list, liveIndex = idx,
             playerFullscreen = false, error = null
         )
+    }
+
+    /** Canales de una categoría (null = todos). */
+    fun channelsInCategory(catId: String?): List<Stream> {
+        val all = _state.value.catalog.live
+        return if (catId == null) all else all.filter { it.categoryId == catId }
+    }
+
+    /** Entra en Directo y reproduce ya el primer canal de la primera categoría con contenido. */
+    fun openLive() {
+        val cats = _state.value.catalog.liveCategories
+        val firstCat = cats.firstOrNull { c -> _state.value.catalog.live.any { it.categoryId == c.categoryId } }
+        val catId = firstCat?.categoryId
+        val list = channelsInCategory(catId).ifEmpty { _state.value.catalog.live }
+        _state.value = _state.value.copy(
+            screen = Screen.Live, livePlaylist = list, liveIndex = 0,
+            liveCatId = catId, playerFullscreen = false, error = null
+        )
+        _state.value.active?.let { p -> if (list.isNotEmpty()) userData.saveLastChannel(p.id, list[0].streamId) }
+    }
+
+    /** Cambiar de categoría reproduce automáticamente su primer canal. */
+    fun selectLiveCategory(catId: String?) {
+        val list = channelsInCategory(catId).ifEmpty { _state.value.catalog.live }
+        _state.value = _state.value.copy(liveCatId = catId, livePlaylist = list, liveIndex = 0)
+        _state.value.active?.let { p -> if (list.isNotEmpty()) userData.saveLastChannel(p.id, list[0].streamId) }
     }
 
     fun selectLiveIndex(i: Int) {

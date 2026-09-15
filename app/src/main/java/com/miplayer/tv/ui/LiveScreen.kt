@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -136,15 +137,17 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
                     Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black),
                     onFullscreen = { vm.setFullscreen(true) }, onReload = { reload() }
                 )
+                LiveCategories(state, vm, Modifier.fillMaxWidth(), horizontal = true)
                 ChannelList(state, vm, Modifier.weight(1f).fillMaxWidth())
             }
 
             else -> Row(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
+                LiveCategories(state, vm, Modifier.weight(0.9f).fillMaxHeight(), horizontal = false)
+                ChannelList(state, vm, Modifier.weight(1f).fillMaxHeight())
                 VideoWithReload(
-                    player, Modifier.weight(1.6f).fillMaxHeight().background(Color.Black),
+                    player, Modifier.weight(1.8f).fillMaxHeight().background(Color.Black),
                     onFullscreen = { vm.setFullscreen(true) }, onReload = { reload() }
                 )
-                ChannelList(state, vm, Modifier.weight(1f).fillMaxHeight())
             }
         }
     }
@@ -218,4 +221,39 @@ fun progressOf(startMs: Long, stopMs: Long): Float? {
     val now = System.currentTimeMillis()
     if (now < startMs || now > stopMs) return null
     return ((now - startMs).toFloat() / (stopMs - startMs)).coerceIn(0f, 1f)
+}
+
+/** Categorías de directo. Al elegir una, se reproduce automáticamente su primer canal. */
+@Composable
+private fun LiveCategories(state: UiState, vm: MainViewModel, modifier: Modifier, horizontal: Boolean) {
+    val cats = state.catalog.liveCategories.filter { c ->
+        state.catalog.live.any { it.categoryId == c.categoryId }
+    }
+    if (cats.isEmpty()) return
+
+    @Composable
+    fun chip(cat: com.miplayer.tv.data.Category) {
+        val active = cat.categoryId == state.liveCatId
+        FocusCard(onClick = { vm.selectLiveCategory(cat.categoryId) }) { f ->
+            Text(
+                cat.categoryName ?: "Sin nombre",
+                color = if (active || f) Accent else TextMain,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                fontSize = 14.sp, maxLines = 1,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+            )
+        }
+    }
+
+    if (horizontal) {
+        androidx.compose.foundation.lazy.LazyRow(
+            modifier.padding(vertical = 6.dp, horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) { items(cats) { chip(it) } }
+    } else {
+        LazyColumn(
+            modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) { items(cats) { chip(it) } }
+    }
 }
