@@ -33,6 +33,11 @@ fun ProfilesScreen(state: UiState, vm: MainViewModel) {
         if (adding) AddProfileForm(state, vm) { adding = false }
         else ProfileList(state, vm) { adding = true }
 
+        Text(
+            "v" + com.miplayer.tv.BuildConfig.VERSION_NAME,
+            color = TextSub, fontSize = 11.sp,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
+        )
         ToastBar(state.toast) { vm.clearToast() }
     }
 }

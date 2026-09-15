@@ -78,6 +78,11 @@ fun DashboardScreen(state: UiState, vm: MainViewModel) {
                 Spacer(Modifier.height(16.dp))
             }
         }
+        Text(
+            "v" + com.miplayer.tv.BuildConfig.VERSION_NAME,
+            color = TextSub, fontSize = 11.sp,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
+        )
         ToastBar(state.toast) { vm.clearToast() }
     }
 }
