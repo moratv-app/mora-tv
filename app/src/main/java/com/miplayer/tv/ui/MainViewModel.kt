@@ -40,6 +40,7 @@ data class UiState(
     val customLists: Map<String, Set<String>> = emptyMap(),
     val currentEpg: List<Programme> = emptyList(),
     val timeshiftBack: Int = 0,
+    val reloadTick: Int = 0,
     val update: UpdateInfo? = null,
     val installedVersionCode: Long = 0,
     val seriesSeasons: List<SeasonGroup> = emptyList(),
@@ -161,6 +162,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 customLists = userData.customLists(p.id)
             )
             loadEpg()
+            if (settings.openLiveOnStart) openLive()
             viewModelScope.launch {
                 val fresh = CatalogRepository.load(p)
                 if (fresh.live.isNotEmpty() || fresh.movies.isNotEmpty() || fresh.series.isNotEmpty()) {
@@ -183,6 +185,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     catalogCache.save(p.id, cat)
                     _state.value = _state.value.copy(catalog = cat, loading = false, screen = Screen.Dashboard)
                     loadEpg()
+                    if (settings.openLiveOnStart) openLive()
                 }
             }
         }
@@ -376,6 +379,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun rewind(minutes: Int) { _state.value = _state.value.copy(timeshiftBack = minutes) }
     fun goLive() { _state.value = _state.value.copy(timeshiftBack = 0) }
+    fun requestReload() { _state.value = _state.value.copy(reloadTick = _state.value.reloadTick + 1) }
 
     fun openSeries(item: SeriesItem) {
         _state.value = _state.value.copy(

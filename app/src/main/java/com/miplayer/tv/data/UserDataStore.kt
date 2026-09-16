@@ -85,4 +85,8 @@ class SettingsStore(context: Context) {
     var gridColumns: Int
         get() = prefs.getInt("cols", 5)
         set(v) = prefs.edit().putInt("cols", v).apply()
+
+    var openLiveOnStart: Boolean
+        get() = prefs.getBoolean("open_live", true)
+        set(v) = prefs.edit().putBoolean("open_live", v).apply()
 }

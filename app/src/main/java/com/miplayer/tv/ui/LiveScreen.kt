@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -73,7 +74,10 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(http))
             .setLoadControl(DefaultLoadControl.Builder()
-                .setBufferDurationsMs(4_000, 30_000, 2_000, 4_000).build())
+                // Arranque más rápido al cambiar de canal y menos cortes
+                .setBufferDurationsMs(2_500, 20_000, 1_200, 2_500)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build())
             .build().apply { playWhenReady = true }
     }
 
@@ -120,6 +124,9 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
         }
     }
 
+    // Recarga bajo demanda desde el botón "Recargar"
+    LaunchedEffect(state.reloadTick) { if (state.reloadTick > 0) reload() }
+
     // Vigilante: si lleva más de 8 s atascado, recarga solo
     LaunchedEffect(player) {
         while (true) {
@@ -165,7 +172,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
             compact -> Column(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
                 PreviewTile(
                     player, Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                    onClick = { vm.setFullscreen(true) }, onReload = { reload() }
+                    onClick = { vm.setFullscreen(true) }
                 )
                 ChannelInfo(state, vm, Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp))
                 LiveCategories(state, vm, Modifier.fillMaxWidth(), horizontal = true)
@@ -178,7 +185,7 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
                 Column(Modifier.weight(1.8f).fillMaxHeight().padding(10.dp)) {
                     PreviewTile(
                         player, Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                        onClick = { vm.setFullscreen(true) }, onReload = { reload() }
+                        onClick = { vm.setFullscreen(true) }
                     )
                     ChannelInfo(state, vm, Modifier.fillMaxWidth().weight(1f).padding(top = 12.dp))
                 }
@@ -193,18 +200,9 @@ fun LiveScreen(state: UiState, vm: MainViewModel, inPip: Boolean = false) {
 
 /** Vista previa del vídeo como una sola casilla: al pulsar OK va a pantalla completa. */
 @Composable
-private fun PreviewTile(player: ExoPlayer, modifier: Modifier, onClick: () -> Unit, onReload: () -> Unit) {
+private fun PreviewTile(player: ExoPlayer, modifier: Modifier, onClick: () -> Unit) {
     FocusCard(modifier, onClick = onClick) { _ ->
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
-            VideoSurface(player, Modifier.fillMaxSize(), showControls = false, showFullscreenButton = false)
-            Box(
-                Modifier.align(Alignment.TopEnd).padding(8.dp)
-                    .clip(CircleShape).background(Color(0x88000000))
-                    .clickable { onReload() }.padding(7.dp)
-            ) {
-                Icon(Icons.Filled.Refresh, "Recargar", tint = Color.White, modifier = Modifier.size(20.dp))
-            }
-        }
+        VideoSurface(player, Modifier.fillMaxSize(), showControls = false, showFullscreenButton = false)
     }
 }
 
@@ -236,6 +234,11 @@ private fun ChannelInfo(state: UiState, vm: MainViewModel, modifier: Modifier) {
             }
         } else {
             Text("Sin información de guía (EPG)", color = TextSub, fontSize = 13.sp)
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            RewindChip("↻ Recargar") { vm.requestReload() }
         }
 
         // Rebobinar (catch-up) solo si el canal guarda archivo
@@ -294,14 +297,24 @@ private fun VideoWithReload(
 @kotlin.OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier, onLongPress: (com.miplayer.tv.data.Stream) -> Unit = {}) {
-    LazyColumn(modifier.padding(horizontal = 12.dp)) {
+    val listState = rememberLazyListState()
+    val playingFocus = remember { FocusRequester() }
+    LaunchedEffect(state.playerFullscreen) {
+        if (!state.playerFullscreen && state.livePlaylist.isNotEmpty()) {
+            runCatching { listState.scrollToItem(state.liveIndex) }
+            kotlinx.coroutines.delay(80)
+            runCatching { playingFocus.requestFocus() }
+        }
+    }
+    LazyColumn(modifier.padding(horizontal = 12.dp), state = listState) {
         itemsIndexed(state.livePlaylist) { i, ch ->
+            val focusMod = if (i == state.liveIndex) Modifier.focusRequester(playingFocus) else Modifier
             val playing = i == state.liveIndex
             val now = vm.nowPlaying(ch.epgId)
             val interaction = remember { MutableInteractionSource() }
             val focused by interaction.collectIsFocusedAsState()
             Row(
-                Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                focusMod.fillMaxWidth().padding(vertical = 3.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (playing) Accent.copy(alpha = 0.20f) else Card)
                     .border(

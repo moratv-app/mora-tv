@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SettingsScreen(state: UiState, vm: MainViewModel) {
     var format by remember { mutableStateOf(vm.settings.streamFormat) }
+    var openLive by remember { mutableStateOf(vm.settings.openLiveOnStart) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
 
     Box(Modifier.fillMaxSize().background(NebulaGradientSoft)) {
@@ -44,7 +45,23 @@ fun SettingsScreen(state: UiState, vm: MainViewModel) {
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
+            Text("Inicio", color = TextMain, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
+            FocusCard(Modifier.fillMaxWidth().height(60.dp), onClick = {
+                openLive = !openLive; vm.settings.openLiveOnStart = openLive
+            }) { f ->
+                Row(Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("Abrir directamente en Canales",
+                        color = if (f) Accent else TextMain, fontSize = 15.sp,
+                        modifier = Modifier.weight(1f))
+                    Text(if (openLive) "SÍ" else "NO",
+                        color = Accent, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+            }
+
+            Spacer(Modifier.height(28.dp))
             Text("Mantenimiento", color = TextMain, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
