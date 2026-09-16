@@ -22,7 +22,7 @@ object UpdateChecker {
 
     private val client = OkHttpClient()
 
-    suspend fun check(): UpdateInfo? = withContext(Dispatchers.IO) {
+    suspend fun check(installedCode: Long): UpdateInfo? = withContext(Dispatchers.IO) {
         try {
             val req = Request.Builder()
                 .url("https://api.github.com/repos/$OWNER/$REPO/releases/latest")
@@ -34,7 +34,7 @@ object UpdateChecker {
             }
             val json = JSONObject(body)
             val code = json.optString("tag_name").removePrefix("v").toIntOrNull() ?: return@withContext null
-            if (code <= BuildConfig.VERSION_CODE) return@withContext null
+            if (code <= installedCode) return@withContext null
             val assets = json.getJSONArray("assets")
             var apk: String? = null
             for (i in 0 until assets.length()) {

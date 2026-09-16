@@ -40,6 +40,7 @@ data class UiState(
     val customLists: Map<String, Set<String>> = emptyMap(),
     val currentEpg: List<Programme> = emptyList(),
     val update: UpdateInfo? = null,
+    val installedVersionCode: Long = 0,
     val seriesSeasons: List<SeasonGroup> = emptyList(),
     val seriesLoadingInfo: Boolean = false,
     val epg: Map<String, List<Programme>> = emptyMap()
@@ -71,9 +72,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun checkUpdate() {
+        val installed = com.miplayer.tv.data.AppVersion.code(getApplication())
+        _state.value = _state.value.copy(installedVersionCode = installed)
         viewModelScope.launch {
-            val u = UpdateChecker.check()
-            // Pone el aviso si hay versión nueva, y lo QUITA si ya tienes la última
+            val u = UpdateChecker.check(installed)
             _state.value = _state.value.copy(update = u)
         }
     }

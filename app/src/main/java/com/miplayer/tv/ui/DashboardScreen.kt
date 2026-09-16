@@ -49,7 +49,7 @@ fun DashboardScreen(state: UiState, vm: MainViewModel) {
             Spacer(Modifier.height(14.dp))
 
             // Aviso de actualización disponible (solo si es realmente más nueva)
-            state.update?.takeIf { it.versionCode > com.miplayer.tv.BuildConfig.VERSION_CODE }?.let { up ->
+            state.update?.takeIf { it.versionCode > state.installedVersionCode }?.let { up ->
                 FocusCard(Modifier.fillMaxWidth(), onClick = { vm.applyUpdate(ctx) }) { f ->
                     androidx.compose.foundation.layout.Row(
                         Modifier.fillMaxWidth().padding(16.dp),
@@ -79,7 +79,7 @@ fun DashboardScreen(state: UiState, vm: MainViewModel) {
             }
         }
         Text(
-            "v" + com.miplayer.tv.BuildConfig.VERSION_NAME,
+            "v" + com.miplayer.tv.data.AppVersion.name(ctx),
             color = TextSub, fontSize = 11.sp,
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
         )

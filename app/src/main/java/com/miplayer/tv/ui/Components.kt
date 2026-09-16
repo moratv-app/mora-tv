@@ -122,7 +122,7 @@ fun UpdateBanner(state: UiState, vm: MainViewModel, modifier: Modifier = Modifie
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val up = state.update ?: return
     // Candado: no mostrar si no es realmente una versión superior a la instalada
-    if (up.versionCode <= com.miplayer.tv.BuildConfig.VERSION_CODE) return
+    if (up.versionCode <= state.installedVersionCode) return
     FocusCard(modifier.fillMaxWidth(), onClick = { vm.applyUpdate(ctx) }) { f ->
         Row(
             Modifier.fillMaxWidth().padding(16.dp),

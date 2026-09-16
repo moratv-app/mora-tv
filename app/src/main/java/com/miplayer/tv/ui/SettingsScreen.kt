@@ -84,7 +84,7 @@ fun SettingsScreen(state: UiState, vm: MainViewModel) {
                 color = TextSub, fontSize = 13.sp
             )
             Spacer(Modifier.height(12.dp))
-            Text("Mora TV versión " + com.miplayer.tv.BuildConfig.VERSION_NAME, color = TextSub, fontSize = 12.sp)
+            Text("Mora TV versión " + com.miplayer.tv.data.AppVersion.name(ctx), color = TextSub, fontSize = 12.sp)
         }
         ToastBar(state.toast) { vm.clearToast() }
     }

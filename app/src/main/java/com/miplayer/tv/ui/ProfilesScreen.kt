@@ -36,7 +36,7 @@ fun ProfilesScreen(state: UiState, vm: MainViewModel) {
         else ProfileList(state, vm) { adding = true }
 
         Text(
-            "v" + com.miplayer.tv.BuildConfig.VERSION_NAME,
+            "v" + com.miplayer.tv.data.AppVersion.name(androidx.compose.ui.platform.LocalContext.current),
             color = TextSub, fontSize = 11.sp,
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
         )

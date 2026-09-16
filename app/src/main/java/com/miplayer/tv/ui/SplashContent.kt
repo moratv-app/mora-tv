@@ -11,7 +11,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.miplayer.tv.BuildConfig
 import com.miplayer.tv.R
 
 /** Pantalla de arranque: logo, nombre y versión. */
@@ -27,7 +26,7 @@ fun SplashContent() {
             Spacer(Modifier.height(16.dp))
             Text("Mora TV", color = TextMain, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text("v" + BuildConfig.VERSION_NAME, color = TextSub, fontSize = 14.sp)
+            Text("v" + com.miplayer.tv.data.AppVersion.name(androidx.compose.ui.platform.LocalContext.current), color = TextSub, fontSize = 14.sp)
         }
     }
 }
