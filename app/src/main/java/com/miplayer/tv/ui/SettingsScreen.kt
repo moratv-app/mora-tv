@@ -75,9 +75,14 @@ fun SettingsScreen(state: UiState, vm: MainViewModel) {
                         Text("Borrar datos locales", color = if (f) Accent else TextMain, fontSize = 15.sp)
                     }
                 }
-                FocusCard(Modifier.weight(1f).height(64.dp), onClick = { vm.go(Screen.Profiles) }) { f ->
+                FocusCard(Modifier.weight(1f).height(64.dp), onClick = {
+                    if (com.miplayer.tv.BuildConfig.PRO) vm.proLogout() else vm.go(Screen.Profiles)
+                }) { f ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Cambiar de perfil", color = if (f) Accent else TextMain, fontSize = 15.sp)
+                        Text(
+                            if (com.miplayer.tv.BuildConfig.PRO) "Cerrar sesión" else "Cambiar de perfil",
+                            color = if (f) Accent else TextMain, fontSize = 15.sp
+                        )
                     }
                 }
             }

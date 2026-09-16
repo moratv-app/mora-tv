@@ -1,12 +1,16 @@
 package com.miplayer.tv.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.miplayer.tv.BuildConfig
 import com.miplayer.tv.data.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Pantalla en la que está el usuario. */
 sealed class Screen {
@@ -53,6 +57,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val profileStore = ProfileStore(app)
     private val userData = UserDataStore(app)
     private val catalogCache = CatalogCache(app)
+    private val proSession = ProSessionStore(app)
     val settings = SettingsStore(app)
 
     private var playOrigin: Screen = Screen.Dashboard
@@ -69,8 +74,94 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             customLists = active?.let { userData.customLists(it.id) } ?: emptyMap(),
             screen = Screen.Profiles
         )
-        if (active != null) openProfile(active)
+        if (BuildConfig.PRO) {
+            if (proSession.token().isNotBlank() && proSession.panelUrl().isNotBlank()) {
+                refreshProSession()
+            }
+        } else if (active != null) {
+            openProfile(active)
+        }
         checkUpdate()
+    }
+
+    fun proPanelUrl(): String = proSession.panelUrl()
+
+    fun proLogin(panelUrl: String, user: String, pass: String) {
+        val panel = panelUrl.ifBlank { proSession.panelUrl() }
+        if (panel.isBlank()) {
+            _state.value = _state.value.copy(error = "Falta la URL del panel")
+            return
+        }
+        _state.value = _state.value.copy(loading = true, loadingMsg = "Entrando...", error = null)
+        viewModelScope.launch {
+            runCatching {
+                val session = withContext(Dispatchers.IO) { PanelClient.login(panel, user.trim(), pass) }
+                applyProSession(panel, session)
+            }.onFailure { e ->
+                _state.value = _state.value.copy(
+                    loading = false,
+                    error = e.message ?: "Usuario o contraseña incorrectos"
+                )
+            }
+        }
+    }
+
+    fun proLogout() {
+        proSession.clear()
+        _state.value = _state.value.copy(
+            active = null, catalog = Catalog(), screen = Screen.Profiles, error = null
+        )
+    }
+
+    private fun refreshProSession() {
+        val panel = proSession.panelUrl()
+        val token = proSession.token()
+        if (panel.isBlank() || token.isBlank()) return
+        _state.value = _state.value.copy(loading = true, loadingMsg = "Comprobando cuenta...")
+        viewModelScope.launch {
+            runCatching {
+                val session = withContext(Dispatchers.IO) { PanelClient.me(panel, token) }
+                applyProSession(panel, session)
+            }.onFailure {
+                proSession.clear()
+                _state.value = _state.value.copy(loading = false, screen = Screen.Profiles)
+            }
+        }
+    }
+
+    private fun applyProSession(panel: String, session: PanelSession) {
+        val raw = session.profile ?: run {
+            _state.value = _state.value.copy(
+                loading = false,
+                error = "Esta cuenta no tiene lista. Enlázala en el panel."
+            )
+            return
+        }
+        val profile = panelToProfile(raw, session.user.username)
+        proSession.save(panel, session.token, session.user.username)
+        profileStore.add(profile)
+        _state.value = _state.value.copy(profiles = profileStore.all())
+        openProfile(profile)
+    }
+
+    private fun panelToProfile(p: PanelProfile, appUser: String): Profile {
+        if (p.isM3u && p.m3uUrl.isNotBlank()) {
+            val uri = runCatching { Uri.parse(p.m3uUrl) }.getOrNull()
+            val user = uri?.getQueryParameter("username")
+            val pass = uri?.getQueryParameter("password")
+            val host = if (uri?.scheme != null && uri.authority != null) "${uri.scheme}://${uri.authority}" else null
+            if (!user.isNullOrBlank() && !pass.isNullOrBlank() && host != null) {
+                return Profile(id = "pro:$appUser", name = p.name.ifBlank { appUser }, host = host, username = user, password = pass)
+            }
+        }
+        val host = p.host.trim().trimEnd('/').let { if (it.startsWith("http")) it else "http://$it" }
+        return Profile(
+            id = "pro:$appUser",
+            name = p.name.ifBlank { appUser },
+            host = host,
+            username = p.username,
+            password = p.password
+        )
     }
 
     fun checkUpdate() {
@@ -200,7 +291,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    fun refresh() = _state.value.active?.let { openProfile(it) }
+    fun refresh() {
+        if (BuildConfig.PRO) refreshProSession()
+        else _state.value.active?.let { openProfile(it) }
+    }
 
     fun loadEpg() {
         val p = _state.value.active ?: return
@@ -228,7 +322,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             s.screen is Screen.Play -> s.copy(screen = playOrigin)
             s.screen is Screen.Browse || s.screen == Screen.Search || s.screen == Screen.Settings ->
                 s.copy(screen = Screen.Dashboard)
-            s.screen == Screen.Dashboard -> s.copy(screen = Screen.Profiles)
+            s.screen == Screen.Dashboard -> if (BuildConfig.PRO) s else s.copy(screen = Screen.Profiles)
             else -> s
         }
     }

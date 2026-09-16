@@ -111,6 +111,7 @@ class MainActivity : ComponentActivity() {
                 if (showSplash) SplashContent() else
                 when (val s = state.screen) {
                     Screen.Profiles -> if (state.loading) LoadingScreen(state.loadingMsg)
+                                       else if (com.miplayer.tv.BuildConfig.PRO) ProLoginScreen(state, vm)
                                        else ProfilesScreen(state, vm)
                     Screen.Dashboard -> if (state.loading) LoadingScreen(state.loadingMsg)
                                         else DashboardScreen(state, vm)

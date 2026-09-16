@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mora TV · Panel</title>
+  <style>
+    :root { --bg:#0c0e1a; --card:#181b2e; --line:#2a2e4a; --txt:#eceefb; --mut:#9aa0c0; --acc:#8b5cf6; --ok:#34d399; --bad:#fb7185; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Segoe UI, system-ui, sans-serif; background: var(--bg); color: var(--txt); }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 16px; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    .mut { color: var(--mut); font-size: 14px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-top: 14px; }
+    input, select, button { width: 100%; padding: 11px 12px; margin: 6px 0; border-radius: 10px; border: 1px solid var(--line); background: #121428; color: var(--txt); font-size: 15px; }
+    button { background: var(--acc); border: 0; font-weight: 700; }
+    button.ghost { background: transparent; border: 1px solid var(--line); }
+    button.bad { background: var(--bad); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .ok { color: var(--ok); } .bad { color: var(--bad); }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+  <script>
+    let token = localStorage.getItem("mora_token") || "";
+    let me = null;
+    const $ = s => document.querySelector(s);
+    async function api(path, opts={}) {
+      const headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+      if (token) headers.Authorization = "Bearer " + token;
+      const res = await fetch(path, Object.assign({}, opts, { headers }));
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(data.detail || "Error " + res.status);
+      return data;
+    }
+    function loginView() {
+      $("#app").innerHTML = `
+        <div class="card" style="max-width:420px;margin:10vh auto;">
+          <h1>Mora TV Panel</h1>
+          <p class="mut">Entra como administrador. Desde el móvil también vale.</p>
+          <input id="u" placeholder="Usuario" value="admin" />
+          <input id="p" type="password" placeholder="Contraseña" />
+          <button id="go">Entrar</button>
+          <div id="err" class="bad"></div>
+        </div>`;
+      $("#go").onclick = async () => {
+        try {
+          const r = await api("/api/login", { method:"POST", body: JSON.stringify({ username: $("#u").value, password: $("#p").value }) });
+          if (r.user.role !== "admin") throw new Error("Esta cuenta no es admin");
+          token = r.token; localStorage.setItem("mora_token", token); me = r.user; usersView();
+        } catch(e) { $("#err").textContent = e.message; }
+      };
+    }
+    function formHtml(u={}) {
+      return `
+        <div class="row">
+          <input id="name" placeholder="Nombre (familiar)" value="${u.name||""}" />
+          <input id="username" placeholder="Usuario de la app" value="${u.username||""}" />
+          <input id="password" placeholder="${u.id ? "Nueva contraseña (vacío = no cambiar)" : "Contraseña de la app"}" />
+          <select id="role"><option value="user">Usuario</option><option value="admin">Admin</option></select>
+          <input id="expires_at" type="date" value="${u.expires_at||""}" />
+          <select id="playlist_type">
+            <option value="xtream">Xtream</option>
+            <option value="m3u">M3U</option>
+            <option value="none">Sin lista</option>
+          </select>
+        </div>
+        <input id="xtream_server" placeholder="Host Xtream (http://servidor:puerto)" value="${u.xtream_server||""}" />
+        <div class="row">
+          <input id="xtream_user" placeholder="Usuario Xtream" value="${u.xtream_user||""}" />
+          <input id="xtream_pass" placeholder="Clave Xtream" value="${u.xtream_pass||""}" />
+        </div>
+        <input id="m3u_url" placeholder="URL M3U (si eliges M3U)" value="${u.m3u_url||""}" />
+        <button id="save">${u.id ? "Guardar cambios" : "Crear usuario"}</button>
+        <p id="msg"></p>`;
+    }
+    function readForm() {
+      const b = {};
+      ["name","username","password","role","expires_at","playlist_type","xtream_server","xtream_user","xtream_pass","m3u_url"].forEach(k => b[k] = $("#"+k).value);
+      return b;
+    }
+    async function usersView(edit) {
+      const users = await api("/api/admin/users");
+      $("#app").innerHTML = `
+        <div class="top">
+          <div>
+            <h1>Usuarios</h1>
+            <div class="mut">Creas una clave de app y la enlazas a Xtream o M3U. Si cambia el host, lo editas aquí y a ellos les llega.</div>
+          </div>
+          <button class="ghost" id="out" style="width:auto">Salir</button>
+        </div>
+        <div class="card">${formHtml(edit||{})}</div>
+        <div class="card">
+          <table>
+            <tr><th>Nombre</th><th>App</th><th>Lista</th><th>Host</th><th></th></tr>
+            ${users.map(u => `
+              <tr>
+                <td>${u.name}<br><span class="mut">${u.role}</span></td>
+                <td>${u.username}</td>
+                <td>${u.playlist_type}</td>
+                <td class="mut">${u.xtream_server || u.m3u_url || "-"}</td>
+                <td>
+                  <button class="ghost" data-ed="${u.id}">Editar</button>
+                  <button class="ghost" data-del="${u.id}">Borrar</button>
+                </td>
+              </tr>`).join("")}
+          </table>
+        </div>`;
+      if (edit) {
+        $("#role").value = edit.role || "user";
+        $("#playlist_type").value = edit.playlist_type || "xtream";
+      }
+      $("#out").onclick = async () => { await api("/api/logout", { method:"POST" }); token=""; localStorage.removeItem("mora_token"); loginView(); };
+      $("#save").onclick = async () => {
+        try {
+          const body = readForm();
+          if (edit && edit.id) {
+            if (!body.password) delete body.password;
+            await api("/api/admin/users/" + edit.id, { method:"PUT", body: JSON.stringify(body) });
+          } else {
+            await api("/api/admin/users", { method:"POST", body: JSON.stringify(body) });
+          }
+          $("#msg").className = "ok"; $("#msg").textContent = "Guardado";
+          usersView();
+        } catch(e) { $("#msg").className = "bad"; $("#msg").textContent = e.message; }
+      };
+      document.querySelectorAll("[data-ed]").forEach(b => b.onclick = () => usersView(users.find(x => String(x.id)===b.dataset.ed)));
+      document.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+        if (!confirm("¿Borrar?")) return;
+        await api("/api/admin/users/" + b.dataset.del, { method:"DELETE" });
+        usersView();
+      });
+    }
+    (async () => {
+      if (!token) return loginView();
+      try { const r = await api("/api/me"); if (r.user.role !== "admin") throw 0; me = r.user; usersView(); }
+      catch { loginView(); }
+    })();
+  </script>
+</body>
+</html>

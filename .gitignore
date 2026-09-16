@@ -9,3 +9,4 @@
 .cxx/
 app/build/
 *.apk
+panel/data/

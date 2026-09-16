@@ -15,6 +15,23 @@ android {
         versionCode = 37
         versionName = "3.8"
     }
+    flavorDimensions += "edition"
+    productFlavors {
+        create("open") {
+            dimension = "edition"
+            isDefault = true
+            buildConfigField("boolean", "PRO", "false")
+            buildConfigField("String", "PANEL_URL", "\"\"")
+        }
+        create("pro") {
+            dimension = "edition"
+            applicationIdSuffix = ".pro"
+            versionNameSuffix = "-pro"
+            resValue("string", "app_name", "Mora TV Pro")
+            buildConfigField("boolean", "PRO", "true")
+            buildConfigField("String", "PANEL_URL", "\"\"")
+        }
+    }
     buildTypes {
         release { isMinifyEnabled = false }
     }
