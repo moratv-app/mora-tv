@@ -39,6 +39,7 @@ data class UiState(
     val liveCatId: String? = null,
     val customLists: Map<String, Set<String>> = emptyMap(),
     val currentEpg: List<Programme> = emptyList(),
+    val timeshiftBack: Int = 0,
     val update: UpdateInfo? = null,
     val installedVersionCode: Long = 0,
     val seriesSeasons: List<SeasonGroup> = emptyList(),
@@ -306,7 +307,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val list = channelsInCategory(catId).ifEmpty { _state.value.catalog.live }
         _state.value = _state.value.copy(
             screen = Screen.Live, livePlaylist = list, liveIndex = 0,
-            liveCatId = catId, playerFullscreen = false, error = null
+            liveCatId = catId, playerFullscreen = false, error = null, timeshiftBack = 0
         )
         _state.value.active?.let { p -> if (list.isNotEmpty()) userData.saveLastChannel(p.id, list[0].streamId) }
         loadCurrentEpg()
@@ -315,7 +316,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Cambiar de categoría reproduce automáticamente su primer canal. */
     fun selectLiveCategory(catId: String?) {
         val list = channelsInCategory(catId).ifEmpty { _state.value.catalog.live }
-        _state.value = _state.value.copy(liveCatId = catId, livePlaylist = list, liveIndex = 0)
+        _state.value = _state.value.copy(liveCatId = catId, livePlaylist = list, liveIndex = 0, timeshiftBack = 0)
         _state.value.active?.let { p -> if (list.isNotEmpty()) userData.saveLastChannel(p.id, list[0].streamId) }
     }
 
@@ -332,7 +333,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun selectLiveIndex(i: Int) {
         val list = _state.value.livePlaylist
         if (i in list.indices) {
-            _state.value = _state.value.copy(liveIndex = i)
+            _state.value = _state.value.copy(liveIndex = i, timeshiftBack = 0)
             _state.value.active?.let { p ->
                 userData.saveLastChannel(p.id, list[i].streamId)
             }
@@ -358,8 +359,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val p = _state.value.active ?: return null
         val list = _state.value.livePlaylist
         val ch = list.getOrNull(_state.value.liveIndex) ?: return null
-        return StreamUrl.live(p, ch.streamId, settings.streamFormat)
+        val back = _state.value.timeshiftBack
+        return if (back > 0 && ch.tvArchive == 1) {
+            val startMs = System.currentTimeMillis() - back * 60_000L
+            val startStr = java.text.SimpleDateFormat("yyyy-MM-dd:HH-mm", java.util.Locale.US)
+                .format(java.util.Date(startMs))
+            StreamUrl.timeshift(p, back + 240, startStr, ch.streamId)
+        } else {
+            StreamUrl.live(p, ch.streamId, settings.streamFormat)
+        }
     }
+
+    /** ¿El canal actual permite volver atrás (archivo/catch-up)? */
+    fun currentSupportsArchive(): Boolean =
+        _state.value.livePlaylist.getOrNull(_state.value.liveIndex)?.tvArchive == 1
+
+    fun rewind(minutes: Int) { _state.value = _state.value.copy(timeshiftBack = minutes) }
+    fun goLive() { _state.value = _state.value.copy(timeshiftBack = 0) }
 
     fun openSeries(item: SeriesItem) {
         _state.value = _state.value.copy(

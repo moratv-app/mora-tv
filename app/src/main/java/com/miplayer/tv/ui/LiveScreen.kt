@@ -237,6 +237,31 @@ private fun ChannelInfo(state: UiState, vm: MainViewModel, modifier: Modifier) {
         } else {
             Text("Sin información de guía (EPG)", color = TextSub, fontSize = 13.sp)
         }
+
+        // Rebobinar (catch-up) solo si el canal guarda archivo
+        if (vm.currentSupportsArchive()) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                if (state.timeshiftBack > 0) "Rebobinado: -${state.timeshiftBack} min" else "Volver atrás",
+                color = if (state.timeshiftBack > 0) Accent else TextSub, fontSize = 12.sp
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RewindChip("-30 min") { vm.rewind(30) }
+                RewindChip("-1 h") { vm.rewind(60) }
+                RewindChip("-2 h") { vm.rewind(120) }
+                RewindChip("EN VIVO") { vm.goLive() }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RewindChip(label: String, onClick: () -> Unit) {
+    FocusCard(onClick = onClick) { f ->
+        Text(label, color = if (f) Accent else TextMain, fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
     }
 }
 
