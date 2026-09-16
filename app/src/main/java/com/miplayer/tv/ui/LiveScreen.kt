@@ -1,7 +1,11 @@
 package com.miplayer.tv.ui
 
 import androidx.annotation.OptIn
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -208,8 +212,9 @@ private fun PreviewTile(player: ExoPlayer, modifier: Modifier, onClick: () -> Un
 @Composable
 private fun ChannelInfo(state: UiState, vm: MainViewModel, modifier: Modifier) {
     val ch = state.livePlaylist.getOrNull(state.liveIndex) ?: return
-    val now = vm.nowPlaying(ch.epgId)
-    val next = vm.nextProgramme(ch.epgId)
+    // Guía por canal (get_short_epg); si no hay, se prueba la del XMLTV
+    val now = state.currentEpg.getOrNull(0) ?: vm.nowPlaying(ch.epgId)
+    val next = state.currentEpg.getOrNull(1) ?: vm.nextProgramme(ch.epgId)
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("● EN DIRECTO", color = Color(0xFFFF5252), fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -268,11 +273,19 @@ private fun ChannelList(state: UiState, vm: MainViewModel, modifier: Modifier, o
         itemsIndexed(state.livePlaylist) { i, ch ->
             val playing = i == state.liveIndex
             val now = vm.nowPlaying(ch.epgId)
+            val interaction = remember { MutableInteractionSource() }
+            val focused by interaction.collectIsFocusedAsState()
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 3.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (playing) Accent.copy(alpha = 0.20f) else Card)
+                    .border(
+                        BorderStroke(if (focused) 3.dp else 0.dp, if (focused) Accent else Color.Transparent),
+                        RoundedCornerShape(10.dp)
+                    )
                     .combinedClickable(
+                        interactionSource = interaction,
+                        indication = null,
                         onClick = { if (i == state.liveIndex) vm.setFullscreen(true) else vm.selectLiveIndex(i) },
                         onLongClick = { onLongPress(ch) }
                     )

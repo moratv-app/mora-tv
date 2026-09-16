@@ -81,4 +81,36 @@ object EpgRepository {
         val now = System.currentTimeMillis()
         return epg[channelId]?.firstOrNull { it.startMs > now }
     }
+
+    /** Guía "ahora/después" de un canal concreto vía player_api get_short_epg (fiable y ligero). */
+    suspend fun shortEpg(p: Profile, streamId: Int): List<Programme> = withContext(Dispatchers.IO) {
+        try {
+            val url = "${p.host.trimEnd('/')}/player_api.php?username=${p.username}&password=${p.password}" +
+                      "&action=get_short_epg&stream_id=$streamId&limit=6"
+            val body = client.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                if (!r.isSuccessful) return@withContext emptyList<Programme>()
+                r.body?.string() ?: return@withContext emptyList<Programme>()
+            }
+            val arr = org.json.JSONObject(body).optJSONArray("epg_listings") ?: return@withContext emptyList()
+            val out = mutableListOf<Programme>()
+            for (i in 0 until arr.length()) {
+                val e = arr.getJSONObject(i)
+                val title = decodeMaybeBase64(e.optString("title"))
+                val start = e.optString("start_timestamp").toLongOrNull()?.times(1000) ?: 0L
+                val stop = e.optString("stop_timestamp").toLongOrNull()?.times(1000) ?: 0L
+                if (title.isNotBlank()) out.add(Programme("", start, stop, title))
+            }
+            out
+        } catch (e: Exception) { emptyList() }
+    }
+
+    /** Los títulos de get_short_epg vienen en Base64; si no lo son, se devuelve tal cual. */
+    private fun decodeMaybeBase64(s: String): String {
+        if (s.isBlank()) return ""
+        return try {
+            val bytes = android.util.Base64.decode(s, android.util.Base64.DEFAULT)
+            val txt = String(bytes, Charsets.UTF_8)
+            if (txt.all { it.code in 9..126 || it.code > 160 }) txt else s
+        } catch (e: Exception) { s }
+    }
 }

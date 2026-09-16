@@ -38,6 +38,7 @@ data class UiState(
     val playerFullscreen: Boolean = false,
     val liveCatId: String? = null,
     val customLists: Map<String, Set<String>> = emptyMap(),
+    val currentEpg: List<Programme> = emptyList(),
     val update: UpdateInfo? = null,
     val seriesSeasons: List<SeasonGroup> = emptyList(),
     val seriesLoadingInfo: Boolean = false,
@@ -306,6 +307,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             liveCatId = catId, playerFullscreen = false, error = null
         )
         _state.value.active?.let { p -> if (list.isNotEmpty()) userData.saveLastChannel(p.id, list[0].streamId) }
+        loadCurrentEpg()
     }
 
     /** Cambiar de categoría reproduce automáticamente su primer canal. */
@@ -315,6 +317,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.value.active?.let { p -> if (list.isNotEmpty()) userData.saveLastChannel(p.id, list[0].streamId) }
     }
 
+    private fun loadCurrentEpg() {
+        val p = _state.value.active ?: return
+        val ch = _state.value.livePlaylist.getOrNull(_state.value.liveIndex) ?: return
+        _state.value = _state.value.copy(currentEpg = emptyList())
+        viewModelScope.launch {
+            val list = EpgRepository.shortEpg(p, ch.streamId)
+            _state.value = _state.value.copy(currentEpg = list)
+        }
+    }
+
     fun selectLiveIndex(i: Int) {
         val list = _state.value.livePlaylist
         if (i in list.indices) {
@@ -322,6 +334,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _state.value.active?.let { p ->
                 userData.saveLastChannel(p.id, list[i].streamId)
             }
+            loadCurrentEpg()
         }
     }
 
